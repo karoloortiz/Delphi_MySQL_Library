@@ -5,9 +5,9 @@ KLib Version = 1.0
 A library with some useful MySQL Utilities for your Delphi.
 
 Dependencies:
-  https://github.com/karoloortiz/Delphi_Utils_Library.git
-  https://github.com/karoloortiz/Delphi_Async_Library.git
-  -FireDAC (avaliable in Delphi RIO Community Edition) or Devart MyAccess (not free)
+ - https://github.com/karoloortiz/Delphi_Utils_Library.git
+ - https://github.com/karoloortiz/Delphi_Async_Library.git
+ - FireDAC (avaliable in Delphi RIO Community Edition) or Devart MyAccess (not free)
   
 Functions:
 - control MySQL Service
