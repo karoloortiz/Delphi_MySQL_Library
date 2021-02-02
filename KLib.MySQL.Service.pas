@@ -269,27 +269,8 @@ begin
 end;
 
 procedure TMySQLService.setPort(value: integer);
-//var
-//  _tempCredentials: TMySQLCredentials;
 begin
-  //  _tempCredentials := info.credentials;
-  //  _tempCredentials.port := value;
-  //  info.credentials := _tempCredentials;
   info.portIniFile := value;
 end;
-
-//function TMySQLService.getCredentials: TCredentials;
-//begin
-//  Result := info.credentials.credentials;
-//end;
-//
-//procedure TMySQLService.setCredentials(value: TCredentials);
-//var
-//  _tempCredentials: TMySQLCredentials;
-//begin
-//  _tempCredentials := info.credentials;
-//  _tempCredentials.credentials := value;
-//  info.credentials := _tempCredentials;
-//end;
 
 end.

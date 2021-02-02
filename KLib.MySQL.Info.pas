@@ -48,6 +48,8 @@ type
     port: integer;
     database: string;
     function getMySQLCliCredentialsParams: string;
+
+    procedure setDefault;
   end;
 
 const
@@ -115,6 +117,11 @@ begin
     ' -p' + credentials.password +
     ' -h ' + server +
     ' --port ' + IntToStr(port);
+end;
+
+procedure TMySQLCredentials.setDefault;
+begin
+  self := DEFAULT_MYSQL_CREDENTIALS;
 end;
 
 function TMySQLInfo.getCredentials: TMySQLCredentials;

@@ -54,6 +54,7 @@ type
 
 procedure mysqldump(args: TMysqldumpArgs);
 procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
+procedure mysql_upgrade(pathMysql_upgrade: string; mySQLCredentials: TMySQLCredentials; force: boolean = FALSE);
 procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials);
 
 implementation
@@ -63,10 +64,11 @@ uses
   KLib.Windows, KLib.Validate, KLib.Utils,
   System.SysUtils;
 
-procedure mysqldump(args: TMysqldumpArgs);
 const
   SHOW_WINDOW_HIDE = SW_HIDE;
   RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
+
+procedure mysqldump(args: TMysqldumpArgs);
 var
   _paramsMysqldump: string;
   _databasesList: TStringList;
@@ -103,9 +105,6 @@ begin
 end;
 
 procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
-const
-  SHOW_WINDOW_HIDE = SW_HIDE;
-  RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
 var
   _paramsMysqlCli: string;
   _cmdParams: string;
@@ -119,10 +118,23 @@ begin
   shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
 end;
 
+procedure mysql_upgrade(pathMysql_upgrade: string; mySQLCredentials: TMySQLCredentials; force: boolean = FALSE);
+var
+  _paramsMysql_upgrade: string;
+  _cmdParams: string;
+begin
+  validateThatFileExists(pathMysql_upgrade);
+  validateMySQLCredentials(mySQLCredentials);
+  _paramsMysql_upgrade := mySQLCredentials.getMySQLCliCredentialsParams;
+  if force then
+  begin
+    _paramsMysql_upgrade := _paramsMysql_upgrade + ' --force';
+  end;
+  _cmdParams := '/K "' + getDoubleQuotedString(pathMysql_upgrade) + ' ' + _paramsMysql_upgrade + '"' + ' & EXIT';
+  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+end;
+
 procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials);
-const
-  SHOW_WINDOW_HIDE = SW_HIDE;
-  RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
 var
   _paramsMysqladmin: string;
 begin
