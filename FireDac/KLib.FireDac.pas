@@ -43,10 +43,10 @@ uses
   FireDAC.Comp.Client;
 
 type
-  TQuery = class(FireDAC.Comp.Client.TFDQuery)
+  T_Query = class(FireDAC.Comp.Client.TFDQuery)
   end;
 
-  TConnection = class(FireDAC.Comp.Client.TFDConnection)
+  T_Connection = class(FireDAC.Comp.Client.TFDConnection)
   private
     function getPort: integer;
     procedure setport(value: integer);
@@ -54,8 +54,7 @@ type
     property port: integer read getPort write setPort;
   end;
 
-function getValidMySQLTConnection_(mySQLCredentials: TMySQLCredentials): TConnection;
-function getMySQLTConnection_(mySQLCredentials: TMySQLCredentials): TConnection;
+function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 
 function getValidMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
 function getMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
@@ -73,33 +72,23 @@ uses
   FireDAC.Phys.MySQLDef, FireDAC.Phys.MySQL,
   System.SysUtils;
 
-function TConnection.getPort: integer;
+function T_Connection.getPort: integer;
 begin
   Result := TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Port;
 end;
 
-procedure TConnection.setPort(value: integer);
+procedure T_Connection.setPort(value: integer);
 begin
   TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Port := value;
 end;
 
-function getValidMySQLTConnection_(mySQLCredentials: TMySQLCredentials): TConnection;
+function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 var
   _FDConnection: TFDConnection;
-  connection: TConnection;
-begin
-  _FDConnection := getValidMySQLTFDConnection(mySQLCredentials);
-  connection := TConnection(_FDConnection);
-  Result := connection;
-end;
-
-function getMySQLTConnection_(mySQLCredentials: TMySQLCredentials): TConnection;
-var
-  _FDConnection: TFDConnection;
-  connection: TConnection;
+  connection: T_Connection;
 begin
   _FDConnection := getMySQLTFDConnection(mySQLCredentials);
-  connection := TConnection(_FDConnection);
+  connection := T_Connection(_FDConnection);
   Result := connection;
 end;
 

@@ -39,14 +39,7 @@ unit KLib.MySQL.Utils;
 interface
 
 uses
-  //############################################################################
-  //SELECT FIREDAC OR MYDAC. FIREDAC IS AVAILABLE ON COMMUNITY EDITION.
-  //----------------------------------------------------------------------------
-  KLib.FireDac,
-  //  KLib.MyDac,
-  //----------------------------------------------------------------------------
-  //############################################################################
-  KLib.MySQL.Info,
+  KLib.MySQL.DriverPort, KLib.MySQL.Info,
   System.Classes;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
@@ -58,10 +51,6 @@ function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredential
 function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
-
-function getValidTQuery(connection: TConnection; sqlText: string = ''): TQuery;
-function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
-function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
@@ -110,6 +99,7 @@ end;
 
 function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion;
 const
+  MYSQL_V5_5 = '5.5';
   MYSQL_V5_7 = '5.7';
   MYSQL_V8 = '8';
 
@@ -119,7 +109,11 @@ var
   version: TMySQLVersion;
 begin
   _versionAsString := getMySQLVersionAsString(mySQLCredentials);
-  if AnsiStartsStr(MYSQL_V5_7, _versionAsString) then
+  if AnsiStartsStr(MYSQL_V5_5, _versionAsString) then
+  begin
+    version := TMySQLVersion.v5_5;
+  end
+  else if AnsiStartsStr(MYSQL_V5_7, _versionAsString) then
   begin
     version := TMySQLVersion.v5_7;
   end
@@ -184,7 +178,7 @@ var
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
   _connection.Connected := true;
-  _query := getValidTQuery(_connection, sqlStatement);
+  _query := getTQuery(_connection, sqlStatement);
 
   _query.open;
   fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
@@ -210,7 +204,7 @@ var
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
   _connection.Connected := true;
-  _query := getValidTQuery(_connection, sqlStatement);
+  _query := getTQuery(_connection, sqlStatement);
 
   _query.open;
   fieldResult := _query.FieldList.Fields[0].value;
@@ -221,33 +215,6 @@ begin
   FreeAndNil(_query);
 
   result := fieldResult;
-end;
-
-function getValidTQuery(connection: TConnection; sqlText: string = ''): TQuery;
-var
-  query: TQuery;
-begin
-  query := TQuery.create(nil);
-  query.connection := connection;
-  query.SQL.Clear;
-  query.SQL.Text := sqlText;
-  Result := query;
-end;
-
-function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
-var
-  connection: TConnection;
-begin
-  connection := getValidMySQLTConnection_(mySQLCredentials);
-  result := connection;
-end;
-
-function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
-var
-  connection: TConnection;
-begin
-  connection := getMySQLTConnection_(mySQLCredentials);
-  result := connection;
 end;
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;

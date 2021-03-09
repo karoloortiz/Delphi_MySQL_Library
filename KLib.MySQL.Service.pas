@@ -153,7 +153,6 @@ const
   ERR_MSG_SERVICE_ALREADY_EXISTS = 'A service with the same name already exists.';
   ERR_MSG_SERVICE_NOT_CREATED = 'MySQL Service not created.';
 
-  SHOW_WINDOW_HIDE = SW_HIDE;
   RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
 var
   _alreadyExistsService: boolean;
@@ -180,7 +179,7 @@ begin
   _doubleQuotedIniPath := getDoubleQuotedString(info.path_ini);
   _mysqldParamsCreateService := '--install ' + nameService + ' --defaults-file=' + _doubleQuotedIniPath;
   _cmdParams := '/K "' + getDoubleQuotedString(info.path_mysqld) + ' ' + _mysqldParamsCreateService + '"' + ' & EXIT';
-  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, TShowWindowType.SW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
   if not(existsService(nameService)) then
   begin
     raise Exception.Create(ERR_MSG_SERVICE_NOT_CREATED);

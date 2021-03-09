@@ -3,13 +3,6 @@ unit KLib.MySQL.Validate;
 interface
 
 uses
-  //############################################################################
-  //SELECT FIREDAC OR MYDAC. FIREDAC IS AVAILABLE ON COMMUNITY EDITION.
-  //----------------------------------------------------------------------------
-  KLib.FireDac,
-  //  KLib.MyDac,
-  //----------------------------------------------------------------------------
-  //############################################################################
   KLib.MySQL.Info;
 
 procedure validateThatMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials; errMsg: string = 'The MySQL version is not 8.0 .');

@@ -34,71 +34,64 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MyDAC;
+unit KLib.MySQL.DriverPort;
 
 interface
 
 uses
-  KLib.MySQL.Info,
-  MyAccess;
+  //############################################################################
+  // SELECT FIREDAC OR MYDAC.
+  // FIREDAC IS AVAILABLE ON COMMUNITY EDITION
+  //----------------------------------------------------------------------------
+  KLib.FireDac,
+  //  KLib.MyDac,
+  //----------------------------------------------------------------------------
+  //############################################################################
+  KLib.MySQL.Info;
 
 type
-  T_Query = class(MyAccess.TMyQuery)
+  TQuery = class(T_Query)
   end;
 
-  T_Connection = class(MyAccess.TMyConnection)
+  TConnection = class(T_Connection)
   end;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
 
-function getValidMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
-function getMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
+function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 
 implementation
 
 uses
-  KLib.MySQL.Utils, KLib.MySQL.Validate;
+  KLib.MySQL.Validate;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
 var
-  _MyConnection: TMyConnection;
-  connection: T_Connection;
+  query: TQuery;
 begin
-  _MyConnection := getMySQLTMyConnection(mySQLCredentials);
-  connection := T_Connection(_MyConnection);
-  Result := connection;
+  query := TQuery.create(nil);
+  query.connection := connection;
+  query.SQL.Clear;
+  query.SQL.Text := sqlText;
+  Result := query;
 end;
 
-function getValidMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 var
-  connection: TMyConnection;
+  connection: TConnection;
 begin
   validateMySQLCredentials(mySQLCredentials);
-  connection := getMySQLTMyConnection(mySQLCredentials);
+  connection := getMySQLTConnection(mySQLCredentials);
   Result := connection;
 end;
 
-function getMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 var
-  connection: TMyConnection;
+  connection: T_Connection;
 begin
-  validateRequiredMySQLProperties(mySQLCredentials);
-  connection := TMyConnection.Create(nil);
-  with mySQLCredentials do
-  begin
-    connection.Server := server;
-    with credentials do
-    begin
-      connection.Username := username;
-      connection.Password := password;
-    end;
-    connection.Port := port;
-    if database <> '' then
-    begin
-      connection.Database := database;
-    end;
-  end;
-  Result := connection;
+  connection := _getMySQLTConnection(mySQLCredentials);
+  Result := TConnection(connection);
 end;
 
 end.

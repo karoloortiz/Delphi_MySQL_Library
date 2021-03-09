@@ -61,7 +61,7 @@ const
   );
 
 type
-  TMySQLVersion = (v5_7, v_8);
+  TMySQLVersion = (v5_5, v5_7, v_8);
 
   TMySQLInfo = record
   private
