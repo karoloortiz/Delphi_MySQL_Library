@@ -50,7 +50,10 @@ function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string;
 function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList;
 function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
-function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
+function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
+
+procedure executeQuery(sqlStatement: string; connection: TConnection);
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
@@ -215,6 +218,29 @@ begin
   FreeAndNil(_query);
 
   result := fieldResult;
+end;
+
+function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant;
+var
+  _query: TQuery;
+  fieldResult: variant;
+begin
+  _query := getTQuery(connection, sqlStatement);
+  _query.open;
+  fieldResult := _query.FieldList.Fields[0].value;
+  _query.Close;
+  FreeAndNil(_query);
+
+  result := fieldResult;
+end;
+
+procedure executeQuery(sqlStatement: string; connection: TConnection);
+var
+  _query: TQuery;
+begin
+  _query := getTQuery(connection, sqlStatement);
+  _query.ExecSQL;
+  FreeAndNil(_query);
 end;
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
