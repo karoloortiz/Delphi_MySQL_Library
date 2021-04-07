@@ -63,12 +63,12 @@ type
     errMsg_startFailed: string;
     confirmMsg_forceShutdown: string;
     property port: integer read getPort write setPort;
-    constructor create(info: TMySQLInfo; numberActiveConnections: integer = 1; allPersonalConnectionsAreClosed: boolean = true);
+    constructor create(info: TMySQLInfo; numberActiveConnections: integer = 1; allPersonalConnectionsAreClosed: boolean = true;
+      errMsg_startFailed: string = 'MySQL not started.'; confirmMsg_forceShutdown: string = 'Other programs are connected to the database, force MySQL shutdown?.');
     procedure AStart(reply: TAsyncifyMethodReply; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(callBacks: TCallbacks; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true); overload;
-    //    procedure startInWaitForm(msg: string = 'MySQL is starting up,' + #13#10 + 'please wait.';
-    //      autoGetFirstPortAvaliable: boolean = true);     // TODO DELETE for compatibility// LEGACY
+    //todo add vcredist check and install?
     procedure start(autoGetFirstPortAvaliable: boolean = true);
     procedure shutdown(force: boolean = false);
     destructor Destroy; override;
@@ -79,28 +79,24 @@ implementation
 uses
   KLib.MySQL.Utils,
   KLib.Async, KLib.AsyncMethod,
-  //   KLib.WaitForm,   // TODO DELETE for compatibility// LEGACY
   Vcl.Dialogs, Vcl.Controls,
   System.SysUtils;
 
-const
-  DEFAULT_RESOLVE_MSG_MYSQL_STARTED = 'MySQL started.';
-  DEFAULT_ERR_MSG_MYSQL_NOT_STARTED = 'MySQL not started.';
-  DEFAULT_CONFIRM_MSG_FORCE_MYSQL_SHUTDOWN = 'Other programs are connected to the database, force MySQL shutdown?.';
-
-constructor TMySQLProcessManager.create(info: TMySQLInfo; numberActiveConnections: integer = 1; allPersonalConnectionsAreClosed: boolean = true);
+constructor TMySQLProcessManager.create(info: TMySQLInfo; numberActiveConnections: integer = 1; allPersonalConnectionsAreClosed: boolean = true;
+  errMsg_startFailed: string = 'MySQL not started.'; confirmMsg_forceShutdown: string = 'Other programs are connected to the database, force MySQL shutdown?.');
 begin
-  self.mySQLProcess := TMySQLProcess.create(info);
-  self.numberActiveConnections := numberActiveConnections;
-  self.allPersonalConnectionsAreClosed := allPersonalConnectionsAreClosed;
-  self.connection := getMySQLTConnection(mySQLProcess.info.credentials);
-  self.errMsg_startFailed := DEFAULT_ERR_MSG_MYSQL_NOT_STARTED;
-  self.confirmMsg_forceShutdown := DEFAULT_CONFIRM_MSG_FORCE_MYSQL_SHUTDOWN;
+  Self.mySQLProcess := TMySQLProcess.create(info);
+  Self.connection := getMySQLTConnection(mySQLProcess.info.credentials);
+
+  Self.numberActiveConnections := numberActiveConnections;
+  Self.allPersonalConnectionsAreClosed := allPersonalConnectionsAreClosed;
+  Self.errMsg_startFailed := errMsg_startFailed;
+  Self.confirmMsg_forceShutdown := confirmMsg_forceShutdown;
 end;
 
 procedure TMySQLProcessManager.AStart(reply: TAsyncifyMethodReply; autoGetFirstPortAvaliable: boolean = true);
 begin
-  self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
+  Self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
   asyncifyMethod(startMySQLProcess, reply);
 end;
 
@@ -110,6 +106,8 @@ begin
 end;
 
 procedure TMySQLProcessManager.AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true);
+const
+  DEFAULT_RESOLVE_MSG_MYSQL_STARTED = 'MySQL started.';
 var
   _asyncMethod: TAsyncMethod;
 begin
@@ -130,14 +128,6 @@ begin
     end);
 end;
 
-// TODO DELETE for compatibility// LEGACY
-//procedure TMySQLProcessManager.startInWaitForm(msg: string = 'MySQL is starting up,' + #13#10 + 'please wait.';
-//  autoGetFirstPortAvaliable: boolean = true);
-//begin
-//  self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
-//  executeMethodInWaitForm(startMySQLProcess, msg);
-//end;
-
 procedure TMySQLProcessManager.start(autoGetFirstPortAvaliable: boolean = true);
 begin
   self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
@@ -146,7 +136,7 @@ end;
 
 procedure TMySQLProcessManager.startMySQLProcess;
 begin
-  if not connection.Connected then
+  if not mySQLProcess.isStarted then
   begin
     try
       mySQLProcess.start(autoGetFirstPortAvaliable);
@@ -163,15 +153,18 @@ end;
 
 destructor TMySQLProcessManager.Destroy;
 begin
-  shutdown;
-  FreeAndNil(mySQLProcess);
-  FreeAndNil(connection);
+  if Assigned(mySQLProcess) then
+  begin
+    shutdown;
+    FreeAndNil(mySQLProcess);
+    FreeAndNil(connection);
+  end;
   inherited;
 end;
 
 procedure TMySQLProcessManager.shutdown(force: boolean = false);
 begin
-  if connection.Connected then
+  if mySQLProcess.isStarted then
   begin
     if (isShutdownEnabled) or (force) then
     begin

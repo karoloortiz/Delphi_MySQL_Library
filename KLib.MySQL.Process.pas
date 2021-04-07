@@ -47,6 +47,8 @@ type
   TMySQLProcess = class
   private
     isVC_RedistInstalled: boolean;
+    function checkIfMySQLIsStarted: boolean;
+    function getMySQLCredentials: TMySQLCredentials;
     function getCredentials: TCredentials;
     procedure setCredentials(value: TCredentials);
     function getPort: integer;
@@ -55,13 +57,15 @@ type
     procedure waitUntilProcessStart;
   public
     info: TMySQLInfo;
-    isStarted: boolean;
+    property isStarted: boolean read checkIfMySQLIsStarted;
+    property mySQLCredentials: TMySQLCredentials read getMySQLCredentials;
     property credentials: TCredentials read getCredentials write setCredentials;
     property port: integer read getPort write setPort;
     constructor create(mySQLInfo: TMySQLInfo);
     procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
     procedure start(autoGetFirstPortAvaliable: boolean = true);
     procedure stop;
+    destructor Destroy; override;
   end;
 
 implementation
@@ -95,10 +99,9 @@ begin
   with _tempCredentials do
   begin
     server := LOCALHOST_IP_ADDRESS;
-    database := '';
+    database := EMPTY_STRING;
   end;
   self.info.credentials := _tempCredentials;
-  isStarted := false;
 end;
 
 procedure TMySQLProcess.installVC_Redist(installOptions: TVC_RedistInstallOpts);
@@ -167,7 +170,6 @@ begin
     end;
     try
       validateMySQLCredentials(info.credentials);
-      isStarted := true;
       _exit := true;
     except
       Inc(i, 1);
@@ -187,6 +189,28 @@ begin
   begin
     mysqladminShutdown(info.path_mysqladmin, info.credentials);
   end;
+end;
+
+function TMySQLProcess.checkIfMySQLIsStarted: boolean;
+var
+  _result: boolean;
+begin
+  _result := checkMySQLCredentials(mySQLCredentials);
+  Result := _result;
+end;
+
+function TMySQLProcess.getMySQLCredentials: TMySQLCredentials;
+var
+  _mySQLCredentials: TMySQLCredentials;
+begin
+  with _mySQLCredentials do
+  begin
+    credentials := Self.credentials;
+    port := Self.port;
+    server := LOCALHOST_IP_ADDRESS;
+    database := EMPTY_STRING;
+  end;
+  Result := _mySQLCredentials;
 end;
 
 function TMySQLProcess.getCredentials: TCredentials;
@@ -211,6 +235,11 @@ end;
 function TMySQLProcess.getPort: integer;
 begin
   result := info.credentials.port;
+end;
+
+destructor TMySQLProcess.Destroy;
+begin
+  inherited;
 end;
 
 end.
