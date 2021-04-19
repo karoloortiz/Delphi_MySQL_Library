@@ -101,7 +101,7 @@ implementation
 uses
   KLib.MySQL.IniManipulator, KLib.MySQL.Utils, KLib.MySQL.Validate,
   KLib.Utils, KLib.Validate,
-  System.IOUtils, System.SysUtils;
+  System.SysUtils;
 
 const
   MYSQL_FILENAME = 'mysql.exe';
@@ -164,27 +164,27 @@ end;
 
 function TMySQLInfo.get_path_mysql: string;
 begin
-  Result := TPath.Combine(path_bin, MYSQL_FILENAME);
+  Result := getCombinedPath(path_bin, MYSQL_FILENAME);
 end;
 
 function TMySQLInfo.get_path_mysqladmin: string;
 begin
-  Result := TPath.Combine(path_bin, MYSQLADMIN_FILENAME);
+  Result := getCombinedPath(path_bin, MYSQLADMIN_FILENAME);
 end;
 
 function TMySQLInfo.get_path_mysqld: string;
 begin
-  Result := TPath.Combine(path_bin, MYSQLD_FILENAME);
+  Result := getCombinedPath(path_bin, MYSQLD_FILENAME);
 end;
 
 function TMySQLInfo.get_path_mysqldump: string;
 begin
-  Result := TPath.Combine(path_bin, MYSQLDUMP_FILENAME);
+  Result := getCombinedPath(path_bin, MYSQLDUMP_FILENAME);
 end;
 
 function TMySQLInfo.get_path_mysqlpump: string;
 begin
-  Result := TPath.Combine(path_bin, MYSQLPUMP_FILENAME);
+  Result := getCombinedPath(path_bin, MYSQLPUMP_FILENAME);
 end;
 
 const

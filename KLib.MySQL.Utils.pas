@@ -53,6 +53,8 @@ function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredential
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
+procedure emptyTable(tableName: string; connection: TConnection);
+
 procedure executeQuery(sqlStatement: string; connection: TConnection);
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
@@ -61,7 +63,7 @@ function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): bool
 implementation
 
 uses
-  KLib.Validate,
+  KLib.Validate, KLib.MyString,
   System.SysUtils, System.StrUtils, System.Variants;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
@@ -202,20 +204,15 @@ end;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
 var
   _connection: TConnection;
-  _query: TQuery;
   fieldResult: variant;
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
   _connection.Connected := true;
-  _query := getTQuery(_connection, sqlStatement);
 
-  _query.open;
-  fieldResult := _query.FieldList.Fields[0].value;
+  fieldResult := getFirstFieldFromSQLStatement(sqlStatement, _connection);
 
-  _query.Close;
   _connection.Connected := false;
   FreeAndNil(_connection);
-  FreeAndNil(_query);
 
   result := fieldResult;
 end;
@@ -232,6 +229,21 @@ begin
   FreeAndNil(_query);
 
   result := fieldResult;
+end;
+
+procedure emptyTable(tableName: string; connection: TConnection);
+const
+  PARAM_TABLENAME = ':TABLENAME';
+  DELETE_FROM_WHERE_PARAM_TABLENAME =
+    'DELETE' + sLineBreak +
+    'FROM' + sLineBreak +
+    PARAM_TABLENAME;
+var
+  _queryStmt: myString;
+begin
+  _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
+  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
+  executeQuery(_queryStmt, connection);
 end;
 
 procedure executeQuery(sqlStatement: string; connection: TConnection);

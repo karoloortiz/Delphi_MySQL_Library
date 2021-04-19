@@ -59,7 +59,7 @@ implementation
 uses
   KLib.MySQL.Validate,
   KLib.Utils, KLib.Windows,
-  System.IOUtils, System.SysUtils;
+ System.SysUtils;
 
 procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
 const
@@ -77,7 +77,7 @@ begin
     if isFileAResource then
     begin
       _applicationDir := getDirExe;
-      _pathFileName := TPath.Combine(_applicationDir, fileNameInstaller);
+      _pathFileName := getCombinedPath(_applicationDir, fileNameInstaller);
       getResourceAsEXEFile(fileNameInstaller, _pathFileName);
     end;
 

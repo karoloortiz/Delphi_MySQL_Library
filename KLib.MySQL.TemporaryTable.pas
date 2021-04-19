@@ -28,20 +28,41 @@ implementation
 
 uses
   KLib.MySQL.Utils,
+  KLib.MyString,
   System.SysUtils;
 
-//todo refactor create query unit and use klib.mystring
+//todo MOVE IN KLIB.MYSQL.CONSTANTS?
 function getCreateTemporaryTableFromQuery_SQLStmt(tableName: string; queryStmt: string): string;
+const
+  PARAM_TABLENAME = ':TABLENAME';
+  PARAM_QUERYSTMT = ':QUERYSTMT';
+  CREATE_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME_PARAM_QUERYSTMT =
+    'CREATE TEMPORARY TABLE' + sLineBreak +
+    PARAM_TABLENAME + sLineBreak +
+    PARAM_QUERYSTMT;
+var
+  _queryStmt: myString;
 begin
-  Result := 'CREATE TEMPORARY TABLE ' + tableName + sLineBreak +
-    queryStmt;
+  _queryStmt := CREATE_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME_PARAM_QUERYSTMT;
+  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
+  _queryStmt.setParamAsString(PARAM_QUERYSTMT, queryStmt);
+
+  Result := _queryStmt;
 end;
 
 function getDropTemporaryTable_SQLStmt(tableName: string): string;
 const
-  DROP_TEMPORANY_TABLE_QUERY_STMT = 'DROP TEMPORARY TABLE ';
+  PARAM_TABLENAME = ':TABLENAME';
+  DROP_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME =
+    'DROP TEMPORARY TABLE' + sLineBreak +
+    PARAM_TABLENAME;
+var
+  _queryStmt: myString;
 begin
-  Result := DROP_TEMPORANY_TABLE_QUERY_STMT + tableName;
+  _queryStmt := DROP_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME;
+  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
+
+  Result := _queryStmt;
 end;
 
 constructor TTemporaryTable.create(tableName: string; selectQueryStmt: string; connection: TConnection);
