@@ -41,13 +41,13 @@ interface
 uses
 
   KLib.MySQL.Info,
-  KLib.Types, KLib.Windows,
+  KLib.Types,
   Winapi.Windows,
   System.Classes;
 
 type
 
-  TMySQLService = class(TWindowsService)
+  TMySQLService = class
   private
     _nameService: string;
     function getMysqlCredentials: TMySQLCredentials;
@@ -66,14 +66,14 @@ type
     constructor create(nameService: string; mySQLInfo: TMySQLInfo); overload;
     constructor create(nameService: string); overload;
 
-    procedure aStart(handleSender: HWND); overload;
-    procedure startIfExists; overload;
-    procedure start; overload;
-    procedure stopIfExists; overload;
-    procedure stop; overload;
-    function isRunning: boolean; overload;
-    function existsService: boolean; overload;
-    procedure deleteService; overload;
+    procedure aStart(handleSender: HWND; forceCleanDataDir: boolean = false);
+    procedure startIfExists(forceCleanDataDir: boolean = false);
+    procedure start(forceCleanDataDir: boolean = false);
+    procedure stopIfExists;
+    procedure stop;
+    function isRunning: boolean;
+    function existsService: boolean;
+    procedure deleteService;
 
     procedure createService(forceInstall: boolean = false);
 
@@ -87,8 +87,8 @@ type
 implementation
 
 uses
-  KLib.MySQL.CLIUtilities,
-  KLib.Constants, KLib.Utils, KLib.Validate,
+  KLib.MySQL.CLIUtilities, KLib.MySQL.Utils,
+  KLib.WindowsService, KLib.Windows, KLib.Constants, KLib.Utils, KLib.Validate,
   System.SysUtils;
 
 constructor TMySQLService.Create(nameService: string; mySQLInfo: TMySQLInfo);
@@ -107,44 +107,80 @@ begin
   Self._nameService := nameService;
 end;
 
-procedure TMySQLService.aStart(handleSender: HWND);
+procedure TMySQLService.aStart(handleSender: HWND; forceCleanDataDir: boolean = false);
 begin
-  aStart(handleSender, nameService);
+  if forceCleanDataDir then
+  begin
+    case info.version of
+      v5_5:
+        //todo
+        ;
+      v5_7:
+        cleanDataDir_v5_7(info.path_datadirIniFile);
+      v_8:
+        ;
+    end;
+  end;
+  TWindowsService.aStart(handleSender, nameService);
 end;
 
-procedure TMySQLService.startIfExists;
+procedure TMySQLService.startIfExists(forceCleanDataDir: boolean = false);
 begin
-  startIfExists(nameService);
+  if forceCleanDataDir then
+  begin
+    case info.version of
+      v5_5:
+        //todo
+        ;
+      v5_7:
+        cleanDataDir_v5_7(info.path_datadirIniFile);
+      v_8:
+        ;
+    end;
+  end;
+  TWindowsService.startIfExists(nameService);
 end;
 
-procedure TMySQLService.start;
+procedure TMySQLService.start(forceCleanDataDir: boolean = false);
 begin
-  start(nameService);
+  if forceCleanDataDir then
+  begin
+    case info.version of
+      v5_5:
+        //todo
+        ;
+      v5_7:
+        cleanDataDir_v5_7(info.path_datadirIniFile);
+      v_8:
+        ;
+    end;
+  end;
+  TWindowsService.start(nameService);
 end;
 
 procedure TMySQLService.stopIfExists;
 begin
-  stopIfExists(nameService);
+  TWindowsService.stopIfExists(nameService);
 end;
 
 procedure TMySQLService.Stop;
 begin
-  stop(nameService);
+  TWindowsService.stop(nameService);
 end;
 
 function TMySQLService.isRunning: boolean;
 begin
-  Result := isRunning(nameService);
+  Result := TWindowsService.checkIfIsRunning(nameService);
 end;
 
 function TMySQLService.existsService: boolean;
 begin
-  Result := existsService(nameService);
+  Result := TWindowsService.checkIfExists(nameService);
 end;
 
 procedure TMySQLService.deleteService;
 begin
-  deleteService(nameService);
+  TWindowsService.delete(nameService);
 end;
 
 procedure TMySQLService.createService(forceInstall: boolean = false);
@@ -164,7 +200,7 @@ begin
   begin
     raise Exception.Create(ERR_MSG_INI_FILE_NOT_SPECIFIED);
   end;
-  _alreadyExistsService := existsService(nameService);
+  _alreadyExistsService := existsService;
   if _alreadyExistsService then
   begin
     if forceInstall then
@@ -180,7 +216,7 @@ begin
   _mysqldParamsCreateService := '--install ' + nameService + ' --defaults-file=' + _doubleQuotedIniPath;
   _cmdParams := '/K "' + getDoubleQuotedString(info.path_mysqld) + ' ' + _mysqldParamsCreateService + '"' + ' & EXIT';
   shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, TShowWindowType.SW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
-  if not(existsService(nameService)) then
+  if not(existsService) then
   begin
     raise Exception.Create(ERR_MSG_SERVICE_NOT_CREATED);
   end;
@@ -238,7 +274,6 @@ end;
 procedure TMySQLService.importScript(fileNameIn: string);
 var
   _pathMysqlCli: string;
-  _mysqlCredentials: TMySQLCredentials;
 begin
   _pathMysqlCli := info.path_mysql;
   KLib.MySQL.CLIUtilities.importScript(_pathMysqlCli, fileNameIn, mysqlCredentials);

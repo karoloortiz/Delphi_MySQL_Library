@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  KLib.Utils, KLib.Windows, KLib.Validate,
+  KLib.Utils, KLib.MemoryRAM, KLib.Windows, KLib.Validate,
   System.IOUtils, System.SysUtils;
 
 const
@@ -175,8 +175,8 @@ const
 var
   _totalFreeMemory: integer;
 begin
-  TMemoryRam.initialize;
-  _totalFreeMemory := TMemoryRam.getTotalFreeMemoryAsInteger;
+  TMemoryRAM.initialize;
+  _totalFreeMemory := TMemoryRAM.getTotalFreeMemoryAsInteger;
   case _totalFreeMemory of
     301 .. MaxInt:
       begin

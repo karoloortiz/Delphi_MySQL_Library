@@ -74,7 +74,7 @@ uses
   KLib.MySQL.Utils, KLib.MySQL.CLIUtilities, KLib.MySQL.Validate,
   KLib.Utils, KLib.Constants, KLib.Validate, KLib.Windows,
   Vcl.Dialogs, Vcl.Controls,
-  System.SysUtils;
+  System.SysUtils, System.UITypes;
 
 constructor TMySQLProcess.create(mySQLInfo: TMySQLInfo);
 const

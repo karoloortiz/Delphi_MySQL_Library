@@ -59,7 +59,7 @@ implementation
 uses
   KLib.MySQL.Validate,
   KLib.Utils, KLib.Windows,
- System.SysUtils;
+  System.SysUtils;
 
 procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
 const
@@ -108,6 +108,7 @@ var
   _result: boolean;
 begin
   _windowsArchitecture := getWindowsArchitecture;
+  _result := false;
   case _windowsArchitecture of
     TWindowsArchitecture.WindowsX86:
       _result := checkIfVC_Redist2013X86IsInstalled;

@@ -80,7 +80,7 @@ uses
   KLib.MySQL.Utils,
   KLib.Async, KLib.AsyncMethod,
   Vcl.Dialogs, Vcl.Controls,
-  System.SysUtils;
+  System.SysUtils, System.UITypes;
 
 constructor TMySQLProcessManager.create(info: TMySQLInfo; numberActiveConnections: integer = 1; allPersonalConnectionsAreClosed: boolean = true;
   errMsg_startFailed: string = 'MySQL not started.'; confirmMsg_forceShutdown: string = 'Other programs are connected to the database, force MySQL shutdown?.');
@@ -108,11 +108,9 @@ end;
 procedure TMySQLProcessManager.AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true);
 const
   DEFAULT_RESOLVE_MSG_MYSQL_STARTED = 'MySQL started.';
-var
-  _asyncMethod: TAsyncMethod;
 begin
   self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
-  _asyncMethod := TAsyncMethod.Create(
+  TAsyncMethod.Create(
     procedure(res: TCallBack; rej: TCallback)
     begin
       startMySQLProcess;
@@ -186,6 +184,12 @@ begin
 end;
 
 function TMySQLProcessManager.canYouShutdown_personalConnectionsClosed: boolean;
+const
+  SELECT_USER =
+    'SELECT' + sLineBreak +
+    'USER' + sLineBreak +
+    'FROM' + sLineBreak +
+    'information_schema.PROCESSLIST';
 var
   _query: TQuery;
   _realNumberConnections: integer;
@@ -195,9 +199,7 @@ begin
 
   _query := TQuery.Create(nil);
   _query.Connection := self.connection;
-  _query.SQL.Clear;
-  _query.SQL.Add('SELECT  USER');
-  _query.SQL.Add('FROM information_schema.PROCESSLIST');
+  _query.SQL.Text := SELECT_USER;
   _query.Open;
   _realNumberConnections := _query.RecordCount - 1;
   if _realNumberConnections = 0 then
@@ -231,15 +233,9 @@ var
   _username: string;
   _realNumberConnections: integer;
 begin
-  _result := false;
-
   _username := mySQLProcess.info.credentials.credentials.username;
   _query := TQuery.Create(nil);
   _query.Connection := self.connection;
-  _query.SQL.Clear;
-  _query.SQL.Add('SELECT  USER');
-  _query.SQL.Add('FROM information_schema.PROCESSLIST');
-  _query.Open;
 
   _query.SQL.Clear;
   _query.SQL.Add('SELECT  USER');

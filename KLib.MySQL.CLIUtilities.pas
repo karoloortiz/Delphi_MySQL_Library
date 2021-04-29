@@ -61,7 +61,7 @@ implementation
 
 uses
   KLib.MySQL.Utils, KLib.MySQL.Validate,
-  KLib.Windows, KLib.Validate, KLib.Utils,
+  KLib.Windows, KLib.Validate, KLib.Utils, KLib.Constants,
   System.SysUtils;
 
 const

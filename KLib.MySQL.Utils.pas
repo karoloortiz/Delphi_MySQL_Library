@@ -60,10 +60,12 @@ procedure executeQuery(sqlStatement: string; connection: TConnection);
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
 
+procedure cleanDataDir_v5_7(pathDataDir: string);
+
 implementation
 
 uses
-  KLib.Validate, KLib.MyString,
+  KLib.Validate, KLib.MyString, KLib.Utils,
   System.SysUtils, System.StrUtils, System.Variants;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
@@ -286,6 +288,30 @@ begin
   end;
 
   Result := _result;
+end;
+
+procedure cleanDataDir_v5_7(pathDataDir: string);
+const
+  IBDATA1_FILENAME = 'ibdata1';
+var
+  _fileNamesList: TStringList;
+  _fileName: string;
+  _nameOfFile: string;
+begin
+  validateThatDirExists(pathDataDir);
+  _fileNamesList := getFileNamesListInDir(pathDataDir);
+  try
+    for _fileName in _fileNamesList do
+    begin
+      _nameOfFile := ExtractFileName(_fileName);
+      if _nameOfFile <> IBDATA1_FILENAME then
+      begin
+        deleteFileIfExists(_fileName);
+      end;
+    end;
+  finally
+    FreeAndNil(_fileNamesList);
+  end;
 end;
 
 end.
