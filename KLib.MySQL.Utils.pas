@@ -53,6 +53,9 @@ function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredential
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
+function getSQLStatementWithFieldInserted(sqlStatement: string; fieldName: string): string;
+function getSQLStatementWithWhereStmtInserted(sqlStatement: string; fieldName: string): string;
+
 procedure emptyTable(tableName: string; connection: TConnection);
 
 procedure executeQuery(sqlStatement: string; connection: TConnection);
@@ -231,6 +234,44 @@ begin
   FreeAndNil(_query);
 
   result := fieldResult;
+end;
+
+function getSQLStatementWithFieldInserted(sqlStatement: string; fieldName: string): string;
+var
+  _result: string;
+  _lastFieldPos: integer;
+  _tempQueryStmt: string;
+  _insertedString: string;
+begin
+  _tempQueryStmt := UpperCase(sqlStatement);
+  _lastFieldPos := AnsiPos('FROM', _tempQueryStmt) - 1;
+  _insertedString := ', ' + fieldName + ' ';
+  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastFieldPos);
+
+  Result := _result;
+end;
+
+function getSQLStatementWithWhereStmtInserted(sqlStatement: string; fieldName: string): string;
+var
+  _result: string;
+  _lastFieldPos: integer;
+  _tempQueryStmt: string;
+  _insertedString: string;
+begin
+  _tempQueryStmt := UpperCase(sqlStatement);
+  _lastFieldPos := AnsiPos('ORDER', _tempQueryStmt) - 1;
+  if _lastFieldPos = -1 then
+  begin
+    _lastFieldPos := AnsiPos('LIMIT', _tempQueryStmt) - 1;
+    if _lastFieldPos = -1 then
+    begin
+      _lastFieldPos := Length(_tempQueryStmt);
+    end;
+  end;
+  _insertedString := ' ' + fieldName + ' ';
+  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastFieldPos);
+
+  Result := _result;
 end;
 
 procedure emptyTable(tableName: string; connection: TConnection);
