@@ -46,10 +46,10 @@ type
   private
     _connection: TConnection;
     _selectQueryStmt: string;
-    _status: boolean;
+    _createdStatus: boolean;
   public
     tableName: String;
-    property isCreated: boolean read _status;
+    property createdStatus: boolean read _createdStatus;
 
     constructor create(tableName: string; selectQueryStmt: string; connection: TConnection);
     procedure execute;
@@ -106,7 +106,7 @@ begin
   self.tableName := tableName;
   self._selectQueryStmt := selectQueryStmt;
   self._connection := connection;
-  _status := false;
+  _createdStatus := false;
 end;
 
 procedure TTemporaryTable.execute;
@@ -115,25 +115,25 @@ const
 var
   _queryStmt: string;
 begin
-  if isCreated then
+  if createdStatus then
   begin
     raise Exception.Create(ERR_MSG);
   end;
   _queryStmt := getCreateTemporaryTableFromQuery_SQLStmt(tableName, _selectQueryStmt);
   executeQuery(_queryStmt, _connection);
 
-  _status := true;
+  _createdStatus := true;
 end;
 
 procedure TTemporaryTable.drop;
 var
   _queryStmt: string;
 begin
-  if isCreated then
+  if createdStatus then
   begin
     _queryStmt := getDropTemporaryTable_SQLStmt(tableName);
     executeQuery(_queryStmt, _connection);
-    _status := false;
+    _createdStatus := false;
   end;
 end;
 

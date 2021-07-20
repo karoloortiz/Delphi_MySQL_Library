@@ -51,10 +51,14 @@ uses
 
 type
   TQuery = class(T_Query)
+  public
+    procedure refreshKeepingPosition;
   end;
 
   TConnection = class(T_Connection)
   end;
+
+procedure refreshQueryKeepingPosition(query: TQuery);
 
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
 
@@ -64,7 +68,22 @@ function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 implementation
 
 uses
-  KLib.MySQL.Validate;
+  KLib.MySQL.Validate,
+  Data.DB;
+
+procedure TQuery.refreshKeepingPosition;
+begin
+  refreshQueryKeepingPosition(self);
+end;
+
+procedure refreshQueryKeepingPosition(query: TQuery);
+var
+  _bookmark: TBookmark;
+begin
+  _bookmark := Query.GetBookmark;
+  query.Refresh;
+  query.GotoBookmark(_bookmark);
+end;
 
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
 var
