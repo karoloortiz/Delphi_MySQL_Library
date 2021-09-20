@@ -53,8 +53,10 @@ function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredential
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
-function getSQLStatementWithFieldInserted(sqlStatement: string; fieldName: string): string;
-function getSQLStatementWithWhereStmtInserted(sqlStatement: string; fieldName: string): string;
+function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
+function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
+function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt: string): string;
+function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
@@ -236,7 +238,7 @@ begin
   result := fieldResult;
 end;
 
-function getSQLStatementWithFieldInserted(sqlStatement: string; fieldName: string): string;
+function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 var
   _result: string;
   _lastFieldPos: integer;
@@ -245,31 +247,71 @@ var
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
   _lastFieldPos := AnsiPos('FROM', _tempQueryStmt) - 1;
-  _insertedString := ', ' + fieldName + ' ';
+  _insertedString := ', ' + fieldStmt + ' ';
   _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastFieldPos);
 
   Result := _result;
 end;
 
-function getSQLStatementWithWhereStmtInserted(sqlStatement: string; fieldName: string): string;
+function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
 var
   _result: string;
-  _lastFieldPos: integer;
+  _lastPos: integer;
+  _tempQueryStmt: string;
+  _insertedString: string;
+  _joinFieldStmtAlreadyExists: boolean;
+begin
+  _joinFieldStmtAlreadyExists := checkIfMainStringContainsSubStringNoCaseSensitive(sqlStatement, joinFieldStmt);
+  if not _joinFieldStmtAlreadyExists then
+  begin
+    _result := getSQLStatementWithJoinStmtInserted(sqlStatement, joinFieldStmt);
+  end
+  else
+  begin
+    _result := sqlStatement;
+  end;
+
+  Result := _result;
+end;
+
+function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt: string): string;
+var
+  _result: string;
+  _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastFieldPos := AnsiPos('ORDER', _tempQueryStmt) - 1;
-  if _lastFieldPos = -1 then
+  _lastPos := AnsiPos('WHERE', _tempQueryStmt) - 1;
+  if _lastPos = -1 then
   begin
-    _lastFieldPos := AnsiPos('LIMIT', _tempQueryStmt) - 1;
-    if _lastFieldPos = -1 then
+    _lastPos := Length(_tempQueryStmt);
+  end;
+  _insertedString := ' ' + joinFieldStmt + ' ';
+  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
+
+  Result := _result;
+end;
+
+function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
+var
+  _result: string;
+  _lastPos: integer;
+  _tempQueryStmt: string;
+  _insertedString: string;
+begin
+  _tempQueryStmt := UpperCase(sqlStatement);
+  _lastPos := AnsiPos('ORDER', _tempQueryStmt) - 1;
+  if _lastPos = -1 then
+  begin
+    _lastPos := AnsiPos('LIMIT', _tempQueryStmt) - 1;
+    if _lastPos = -1 then
     begin
-      _lastFieldPos := Length(_tempQueryStmt);
+      _lastPos := Length(_tempQueryStmt);
     end;
   end;
-  _insertedString := ' ' + fieldName + ' ';
-  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastFieldPos);
+  _insertedString := ' ' + whereFieldStmt + ' ';
+  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
   Result := _result;
 end;
