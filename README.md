@@ -1,6 +1,6 @@
 # Delphi_MySQL_Library
 
-KLib Version = 1.0
+KLib Version = 2.0
 
 A library with some useful MySQL Utilities for your Delphi.
 
@@ -14,7 +14,7 @@ Functions:
 - control MySQL as Process
 - ini manipulator
 - principal MySQL CLI utilities
-- Microsoft Visual C++ Redistributable intall checker
+- Microsoft Visual C++ Redistributable install checker
 - useful queries
 
 IF YOU USE FIREDAC, YOU NEED THE MYSQL DLLS AVALIABLES IN THIS REPO OR YOU CAN DIRECTLY DOWNLOAD THEM FROM MYSQL.
