@@ -237,7 +237,7 @@ begin
   validateThatStringIsNotEmpty(path_ini, ERR_MSG_INI_FILE_NOT_SPECIFIED);
   _iniManipulator := TMySQLIniManipulator.Create(path_ini);
   _datadir := getValidFullPath(value);
-  _iniManipulator.datadir := value;
+  _iniManipulator.datadir := _datadir;
   FreeAndNil(_iniManipulator);
 end;
 
