@@ -256,9 +256,6 @@ end;
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
 var
   _result: string;
-  _lastPos: integer;
-  _tempQueryStmt: string;
-  _insertedString: string;
   _joinFieldStmtAlreadyExists: boolean;
 begin
   _joinFieldStmtAlreadyExists := checkIfMainStringContainsSubStringNoCaseSensitive(sqlStatement, joinFieldStmt);
