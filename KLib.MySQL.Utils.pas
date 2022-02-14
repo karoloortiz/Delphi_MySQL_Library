@@ -57,6 +57,7 @@ function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: strin
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
 function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt: string): string;
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
+function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
@@ -70,7 +71,8 @@ procedure cleanDataDir_v5_7(pathDataDir: string);
 implementation
 
 uses
-  KLib.Validate, KLib.MyString, KLib.Utils,
+  KLib.Validate, KLib.MyString, KLib.Utils, KLib.Constants,
+  Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
@@ -311,6 +313,134 @@ begin
   _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
   Result := _result;
+end;
+
+function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
+var
+  sqlText: myString;
+  i: integer;
+  _paramName: string;
+  _paramValue: Variant;
+  a: TFieldType;
+begin
+  sqlText := query.SQL.Text;
+  if paramsFulfilled then
+  begin
+    for i := 0 to query.Params.Count - 1 do
+    begin
+      _paramName := query.Params[i].Name;
+      _paramValue := query.Params[i].Value;
+
+      case query.Params[i].DataType of
+        ftUnknown:
+          ;
+        ftString:
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+        ftSmallint:
+          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+        ftInteger:
+          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+        ftWord:
+          ;
+        ftBoolean:
+          ;
+        ftFloat:
+          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+        ftCurrency:
+          ;
+        ftBCD:
+          ;
+        ftDate:
+          sqlText.setParamAsDoubleQuotedDate(_paramName, _paramValue);
+        ftTime:
+          sqlText.setParamAsDoubleQuotedDateTime(_paramName, _paramValue);
+        ftDateTime:
+          sqlText.setParamAsDoubleQuotedDateTime(_paramName, _paramValue);
+        ftBytes:
+          ;
+        ftVarBytes:
+          ;
+        ftAutoInc:
+          ;
+        ftBlob:
+          ;
+        ftMemo:
+          ;
+        ftGraphic:
+          ;
+        ftFmtMemo:
+          ;
+        ftParadoxOle:
+          ;
+        ftDBaseOle:
+          ;
+        ftTypedBinary:
+          ;
+        ftCursor:
+          ;
+        ftFixedChar:
+          ;
+        ftWideString:
+          ;
+        ftLargeint:
+          ;
+        ftADT:
+          ;
+        ftArray:
+          ;
+        ftReference:
+          ;
+        ftDataSet:
+          ;
+        ftOraBlob:
+          ;
+        ftOraClob:
+          ;
+        ftVariant:
+          ;
+        ftInterface:
+          ;
+        ftIDispatch:
+          ;
+        ftGuid:
+          ;
+        ftTimeStamp:
+          ;
+        ftFMTBcd:
+          ;
+        ftFixedWideChar:
+          ;
+        ftWideMemo:
+          ;
+        ftOraTimeStamp:
+          ;
+        ftOraInterval:
+          ;
+        ftLongWord:
+          ;
+        ftShortint:
+          ;
+        ftByte:
+          ;
+        ftExtended:
+          ;
+        ftConnection:
+          ;
+        ftParams:
+          ;
+        ftStream:
+          ;
+        ftTimeStampOffset:
+          ;
+        ftObject:
+          ;
+        ftSingle:
+          ;
+      end;
+    end;
+  end;
+
+  Result := sqlText;
 end;
 
 procedure emptyTable(tableName: string; connection: TConnection);
