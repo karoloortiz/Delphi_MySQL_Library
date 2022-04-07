@@ -65,7 +65,7 @@ uses
   System.SysUtils;
 
 const
-  SHOW_WINDOW_HIDE = SW_HIDE;
+  SHOW_WINDOW_HIDE = _SW_HIDE;
   RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
 
 procedure mysqldump(args: TMysqldumpArgs);

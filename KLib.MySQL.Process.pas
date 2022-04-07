@@ -62,7 +62,6 @@ type
     property credentials: TCredentials read getCredentials write setCredentials;
     property port: integer read getPort write setPort;
     constructor create(mySQLInfo: TMySQLInfo);
-    procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
     procedure start(autoGetFirstPortAvaliable: boolean = true);
     procedure stop;
     destructor Destroy; override;
@@ -79,6 +78,7 @@ uses
 constructor TMySQLProcess.create(mySQLInfo: TMySQLInfo);
 const
   ERR_MSG = 'MySQL version were not being specified.';
+  NOT_ACCORDING_WINDOWS_ARCHITECTURE = false;
 var
   _tempCredentials: TMySQLCredentials;
 begin
@@ -87,7 +87,7 @@ begin
   validateThatDirExists(mySQLInfo.path_datadirIniFile);
   case mySQLInfo.version of
     TMySQLVersion.v5_7:
-      isVC_RedistInstalled := checkIfVC_Redist2013IsInstalled;
+      isVC_RedistInstalled := checkIfVC_Redist2013IsInstalled(NOT_ACCORDING_WINDOWS_ARCHITECTURE);
     TMySQLVersion.v_8:
       isVC_RedistInstalled := checkIfVC_Redist2019X64IsInstalled;
   else
@@ -104,18 +104,10 @@ begin
   self.info.credentials := _tempCredentials;
 end;
 
-procedure TMySQLProcess.installVC_Redist(installOptions: TVC_RedistInstallOpts);
-begin
-  if not isVC_RedistInstalled then
-  begin
-    KLib.VC_Redist.installVC_Redist(installOptions);
-  end;
-end;
-
 procedure TMySQLProcess.start(autoGetFirstPortAvaliable: boolean = true);
 const
   ERR_MSG_VC_REDIST_NOT_INSTALLED = 'Microsoft Visual C++ Redistributable not installed.';
-  SHOW_WINDOW_HIDE = SW_HIDE;
+  SHOW_WINDOW_HIDE = _SW_HIDE;
   RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
 var
   _mysqldParams: string;

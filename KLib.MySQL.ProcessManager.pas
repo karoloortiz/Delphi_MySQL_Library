@@ -39,7 +39,7 @@ unit KLib.MySQL.ProcessManager;
 interface
 
 uses
-  KLib.MySQL.DriverPort, KLib.MySQL.Process, KLib.MySQL.Info,
+  KLib.MySQL.DriverPort, KLib.MySQL.Process, KLib.MySQL.Info, KLib.VC_Redist,
   KLib.Types;
 
 type
@@ -68,7 +68,6 @@ type
     procedure AStart(reply: TAsyncifyMethodReply; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(callBacks: TCallbacks; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true); overload;
-    //todo add vcredist check and install?
     procedure start(autoGetFirstPortAvaliable: boolean = true);
     procedure shutdown(force: boolean = false);
     destructor Destroy; override;
@@ -147,17 +146,6 @@ begin
       end;
     end;
   end;
-end;
-
-destructor TMySQLProcessManager.Destroy;
-begin
-  if Assigned(mySQLProcess) then
-  begin
-    shutdown;
-    FreeAndNil(mySQLProcess);
-    FreeAndNil(connection);
-  end;
-  inherited;
 end;
 
 procedure TMySQLProcessManager.shutdown(force: boolean = false);
@@ -289,6 +277,17 @@ end;
 function TMySQLProcessManager.getPort: integer;
 begin
   result := mySQLProcess.port;
+end;
+
+destructor TMySQLProcessManager.Destroy;
+begin
+  if Assigned(mySQLProcess) then
+  begin
+    shutdown;
+    FreeAndNil(mySQLProcess);
+    FreeAndNil(connection);
+  end;
+  inherited;
 end;
 
 end.

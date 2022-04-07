@@ -215,7 +215,7 @@ begin
   _doubleQuotedIniPath := getDoubleQuotedString(info.path_ini);
   _mysqldParamsCreateService := '--install ' + nameService + ' --defaults-file=' + _doubleQuotedIniPath;
   _cmdParams := '/K "' + getDoubleQuotedString(info.path_mysqld) + ' ' + _mysqldParamsCreateService + '"' + ' & EXIT';
-  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, TShowWindowType.SW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, TShowWindowType._SW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
   if not(existsService) then
   begin
     raise Exception.Create(ERR_MSG_SERVICE_NOT_CREATED);

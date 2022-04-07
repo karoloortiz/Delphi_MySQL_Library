@@ -48,8 +48,10 @@ type
     isFileAResource: boolean;
   end;
 
+procedure installVC_RedistIfNotExists(installOptions: TVC_RedistInstallOpts);
 procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
-function checkIfVC_Redist2013IsInstalled: boolean;
+function checkIfVC_RedistIsInstalled(version: TVC_RedistVersion): boolean;
+function checkIfVC_Redist2013IsInstalled(accordingWindowsArchitecture: boolean = true): boolean;
 function checkIfVC_Redist2013X86IsInstalled: boolean;
 function checkIfVC_Redist2013X64IsInstalled: boolean;
 function checkIfVC_Redist2019X64IsInstalled: boolean;
@@ -61,59 +63,79 @@ uses
   KLib.Utils, KLib.Windows,
   System.SysUtils;
 
-procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
-const
-  ERR_MSG_VERSION_NOT_SPECIFIED = 'Version of Microsoft Visual C++ Redistributable not being specified.';
-
-  EMPTY_PARAMS = '';
-  RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
+procedure installVC_RedistIfNotExists(installOptions: TVC_RedistInstallOpts);
 var
-  _pathFileName: string;
-  _applicationDir: string;
+  _isVC_RedistInstalled: boolean;
 begin
-  with installOptions do
+  _isVC_RedistInstalled := checkIfVC_RedistIsInstalled(installOptions.version);
+  if not _isVC_RedistInstalled then
   begin
-    _pathFileName := fileNameInstaller;
-    if isFileAResource then
-    begin
-      _applicationDir := getDirExe;
-      _pathFileName := getCombinedPath(_applicationDir, fileNameInstaller);
-      getResourceAsEXEFile(fileNameInstaller, _pathFileName);
-    end;
-
-    executeAndWaitExe(_pathFileName, EMPTY_PARAMS, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
-    Sleep(2000);
-
-    if deleteFileAfterInstall then
-    begin
-      deleteFileIfExists(_pathFileName);
-    end;
-
-    case version of
-      TVC_RedistVersion.VC_Redist2013X86:
-        validateThatVC_Redist2013X86IsInstalled;
-      TVC_RedistVersion.VC_Redist2013X64:
-        validateThatVC_Redist2013X64IsInstalled;
-      TVC_RedistVersion.VC_Redist2019X64:
-        validateThatVC_Redist2019X64IsInstalled;
-    else
-      raise Exception.Create(ERR_MSG_VERSION_NOT_SPECIFIED);
-    end;
+    installVC_Redist(installOptions);
   end;
 end;
 
-function checkIfVC_Redist2013IsInstalled: boolean;
+procedure installVC_Redist(installOptions: TVC_RedistInstallOpts);
+var
+  _pathFileName: string;
+begin
+  _pathFileName := installOptions.fileNameInstaller;
+  if installOptions.isFileAResource then
+  begin
+    _pathFileName := getCombinedPathWithCurrentDir(installOptions.fileNameInstaller);
+    getResourceAsEXEFile(installOptions.fileNameInstaller, _pathFileName);
+  end;
+
+  executeAndWaitExe(_pathFileName);
+
+  Sleep(2000);
+
+  if installOptions.deleteFileAfterInstall then
+  begin
+    deleteFileIfExists(_pathFileName);
+  end;
+
+  validateVC_RedistIsInstalled(installOptions.version);
+end;
+
+function checkIfVC_RedistIsInstalled(version: TVC_RedistVersion): boolean;
+const
+  ERR_MSG_VERSION_NOT_SPECIFIED = 'Version of Microsoft Visual C++ Redistributable not being specified.';
+var
+  _isVC_RedistInstalled: boolean;
+begin
+  case version of
+    TVC_RedistVersion.VC_Redist2013X86:
+      _isVC_RedistInstalled := checkIfVC_Redist2013X86IsInstalled;
+    TVC_RedistVersion.VC_Redist2013X64:
+      _isVC_RedistInstalled := checkIfVC_Redist2013X64IsInstalled;
+    TVC_RedistVersion.VC_Redist2019X64:
+      _isVC_RedistInstalled := checkIfVC_Redist2019X64IsInstalled;
+  else
+    raise Exception.Create(ERR_MSG_VERSION_NOT_SPECIFIED);
+  end;
+
+  Result := _isVC_RedistInstalled;
+end;
+
+function checkIfVC_Redist2013IsInstalled(accordingWindowsArchitecture: boolean = true): boolean;
 var
   _windowsArchitecture: TWindowsArchitecture;
   _result: boolean;
 begin
-  _windowsArchitecture := getWindowsArchitecture;
-  _result := false;
-  case _windowsArchitecture of
-    TWindowsArchitecture.WindowsX86:
-      _result := checkIfVC_Redist2013X86IsInstalled;
-    TWindowsArchitecture.WindowsX64:
-      _result := checkIfVC_Redist2013X64IsInstalled;
+  if accordingWindowsArchitecture then
+  begin
+    _windowsArchitecture := getWindowsArchitecture;
+    _result := false;
+    case _windowsArchitecture of
+      TWindowsArchitecture.WindowsX86:
+        _result := checkIfVC_Redist2013X86IsInstalled;
+      TWindowsArchitecture.WindowsX64:
+        _result := checkIfVC_Redist2013X64IsInstalled;
+    end;
+  end
+  else
+  begin
+    _result := checkIfVC_Redist2013X86IsInstalled or checkIfVC_Redist2013X64IsInstalled;
   end;
   Result := _result;
 end;
