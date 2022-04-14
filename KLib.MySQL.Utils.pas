@@ -49,7 +49,8 @@ function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion;
 function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string;
 function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList;
 function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
-function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
@@ -186,13 +187,26 @@ end;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
 var
   _connection: TConnection;
-  _query: TQuery;
-  fieldListResult: variant;
-  i: integer;
+  fieldListResult: Variant;
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
   _connection.Connected := true;
-  _query := getTQuery(_connection, sqlStatement);
+
+  fieldListResult := getFirstFieldListFromSQLStatement(sqlStatement, _connection);
+
+  _connection.Connected := false;
+  FreeAndNil(_connection);
+
+  result := fieldListResult;
+end;
+
+function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant;
+var
+  _query: TQuery;
+  fieldListResult: Variant;
+  i: integer;
+begin
+  _query := getTQuery(connection, sqlStatement);
 
   _query.open;
   fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
@@ -201,10 +215,7 @@ begin
     fieldListResult[i] := _query.FieldList.Fields[0].value;
     _query.Next;
   end;
-
   _query.Close;
-  _connection.Connected := false;
-  FreeAndNil(_connection);
   FreeAndNil(_query);
 
   result := fieldListResult;
@@ -213,7 +224,7 @@ end;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
 var
   _connection: TConnection;
-  fieldResult: variant;
+  fieldResult: Variant;
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
   _connection.Connected := true;
@@ -229,7 +240,7 @@ end;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant;
 var
   _query: TQuery;
-  fieldResult: variant;
+  fieldResult: Variant;
 begin
   _query := getTQuery(connection, sqlStatement);
   _query.open;
