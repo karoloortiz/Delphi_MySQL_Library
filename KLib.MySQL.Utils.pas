@@ -332,7 +332,6 @@ var
   i: integer;
   _paramName: string;
   _paramValue: Variant;
-  a: TFieldType;
 begin
   sqlText := query.SQL.Text;
   if paramsFulfilled then
