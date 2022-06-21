@@ -73,14 +73,14 @@ uses
 
 procedure TQuery.refreshKeepingPosition;
 begin
-  refreshQueryKeepingPosition(self);
+  refreshQueryKeepingPosition(Self);
 end;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 var
   _bookmark: TBookmark;
 begin
-  _bookmark := Query.GetBookmark;
+  _bookmark := query.GetBookmark;
   query.Refresh;
   query.GotoBookmark(_bookmark);
 end;
