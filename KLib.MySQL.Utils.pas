@@ -376,7 +376,7 @@ begin
         ftBlob:
           ;
         ftMemo:
-          ;
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftGraphic:
           ;
         ftFmtMemo:
@@ -390,9 +390,9 @@ begin
         ftCursor:
           ;
         ftFixedChar:
-          ;
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftWideString:
-          ;
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftLargeint:
           ;
         ftADT:
@@ -420,9 +420,9 @@ begin
         ftFMTBcd:
           ;
         ftFixedWideChar:
-          ;
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftWideMemo:
-          ;
+          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftOraTimeStamp:
           ;
         ftOraInterval:
