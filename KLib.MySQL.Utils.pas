@@ -68,6 +68,7 @@ function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
 
 procedure cleanDataDir_v5_7(pathDataDir: string);
+procedure cleanDataDir_v8(pathDataDir: string);
 
 implementation
 
@@ -512,26 +513,26 @@ end;
 
 procedure cleanDataDir_v5_7(pathDataDir: string);
 const
-  IBDATA1_FILENAME = 'ibdata1';
-var
-  _fileNamesList: TStringList;
-  _fileName: string;
-  _nameOfFile: string;
+  LIST_FILES_TO_KEEP: array [1 .. 1] of string = (
+    'ibdata1'
+    );
 begin
-  validateThatDirExists(pathDataDir);
-  _fileNamesList := getFileNamesListInDir(pathDataDir);
-  try
-    for _fileName in _fileNamesList do
-    begin
-      _nameOfFile := ExtractFileName(_fileName);
-      if _nameOfFile <> IBDATA1_FILENAME then
-      begin
-        deleteFileIfExists(_fileName);
-      end;
-    end;
-  finally
-    FreeAndNil(_fileNamesList);
-  end;
+  deleteFilesInDir(pathDataDir, LIST_FILES_TO_KEEP);
+end;
+
+procedure cleanDataDir_v8(pathDataDir: string);
+const
+  LIST_FILES_TO_KEEP: array [1 .. 3] of string = (
+    'ib_buffer_pool',
+    'ibdata1',
+    'mysql.ibd'
+    );
+var
+  _innodb_temp_path: string;
+begin
+  deleteFilesInDir(pathDataDir, LIST_FILES_TO_KEEP);
+  _innodb_temp_path := getCombinedPath(pathDataDir, '#innodb_temp');
+  deleteFileIfExists(_innodb_temp_path);
 end;
 
 end.

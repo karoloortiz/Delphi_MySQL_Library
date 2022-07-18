@@ -66,7 +66,7 @@ type
     constructor create(nameService: string; mySQLInfo: TMySQLInfo); overload;
     constructor create(nameService: string); overload;
 
-    procedure aStart(handleSender: HWND; forceCleanDataDir: boolean = false);
+    procedure AStart(handleSender: HWND; forceCleanDataDir: boolean = false);
     procedure startIfExists(forceCleanDataDir: boolean = false);
     procedure start(forceCleanDataDir: boolean = false);
     procedure stopIfExists;
@@ -75,7 +75,10 @@ type
     function existsService: boolean;
     procedure deleteService;
 
+    procedure ACreateService(myCallbacks: TCallBacks; forceInstall: boolean = false);
     procedure createService(forceInstall: boolean = false);
+
+    procedure cleanDataDir;
 
     procedure addFirewallException;
     procedure deleteFirewallException;
@@ -89,6 +92,7 @@ implementation
 uses
   KLib.MySQL.CLIUtilities, KLib.MySQL.Utils,
   KLib.WindowsService, KLib.Windows, KLib.Constants, KLib.Utils, KLib.Validate,
+  Klib.Async,
   System.SysUtils;
 
 constructor TMySQLService.Create(nameService: string; mySQLInfo: TMySQLInfo);
@@ -107,19 +111,11 @@ begin
   Self._nameService := nameService;
 end;
 
-procedure TMySQLService.aStart(handleSender: HWND; forceCleanDataDir: boolean = false);
+procedure TMySQLService.AStart(handleSender: HWND; forceCleanDataDir: boolean = false);
 begin
   if forceCleanDataDir then
   begin
-    case info.version of
-      v5_5:
-        //todo
-        ;
-      v5_7:
-        cleanDataDir_v5_7(info.path_datadirIniFile);
-      v_8:
-        ;
-    end;
+    cleanDataDir;
   end;
   TWindowsService.aStart(handleSender, nameService);
 end;
@@ -128,15 +124,7 @@ procedure TMySQLService.startIfExists(forceCleanDataDir: boolean = false);
 begin
   if forceCleanDataDir then
   begin
-    case info.version of
-      v5_5:
-        //todo
-        ;
-      v5_7:
-        cleanDataDir_v5_7(info.path_datadirIniFile);
-      v_8:
-        ;
-    end;
+    cleanDataDir;
   end;
   TWindowsService.startIfExists(nameService);
 end;
@@ -145,15 +133,7 @@ procedure TMySQLService.start(forceCleanDataDir: boolean = false);
 begin
   if forceCleanDataDir then
   begin
-    case info.version of
-      v5_5:
-        //todo
-        ;
-      v5_7:
-        cleanDataDir_v5_7(info.path_datadirIniFile);
-      v_8:
-        ;
-    end;
+    cleanDataDir;
   end;
   TWindowsService.start(nameService);
 end;
@@ -181,6 +161,16 @@ end;
 procedure TMySQLService.deleteService;
 begin
   TWindowsService.delete(nameService);
+end;
+
+procedure TMySQLService.ACreateService(myCallbacks: TCallBacks; forceInstall: boolean = false);
+begin
+  asyncifyAnonymousMethod(
+    procedure
+    begin
+      createService(forceInstall);
+    end,
+    myCallbacks);
 end;
 
 procedure TMySQLService.createService(forceInstall: boolean = false);
@@ -219,6 +209,19 @@ begin
   if not(existsService) then
   begin
     raise Exception.Create(ERR_MSG_SERVICE_NOT_CREATED);
+  end;
+end;
+
+procedure TMySQLService.cleanDataDir;
+begin
+  case info.version of
+    v5_5:
+      //todo
+      ;
+    v5_7:
+      cleanDataDir_v5_7(info.path_datadirIniFile);
+    v_8:
+      cleanDataDir_v8(info.path_datadirIniFile);
   end;
 end;
 
