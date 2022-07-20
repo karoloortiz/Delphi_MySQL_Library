@@ -34,7 +34,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.Firedac.Resources;
+unit KLib.MySQL.Firedac.Resources;
 
 interface
 

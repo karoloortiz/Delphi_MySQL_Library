@@ -43,8 +43,8 @@ uses
   // SELECT FIREDAC OR MYDAC.
   // FIREDAC IS AVAILABLE ON COMMUNITY EDITION
   //----------------------------------------------------------------------------
-  KLib.FireDac,
-  //  KLib.MyDac,
+  KLib.MySQL.FireDac,
+  //  KLib.MySQL.MyDAC,
   //----------------------------------------------------------------------------
   //############################################################################
   KLib.MySQL.Info;
