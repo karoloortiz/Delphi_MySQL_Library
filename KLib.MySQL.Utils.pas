@@ -254,14 +254,14 @@ end;
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 var
   _result: string;
-  _lastFieldPos: integer;
+  _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastFieldPos := AnsiPos('FROM', _tempQueryStmt) - 1;
+  _lastPos := _tempQueryStmt.LastIndexOf('FROM') - 1;
   _insertedString := ', ' + fieldStmt + ' ';
-  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastFieldPos);
+  _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
   Result := _result;
 end;
@@ -292,7 +292,7 @@ var
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastPos := AnsiPos('WHERE', _tempQueryStmt) - 1;
+  _lastPos := _tempQueryStmt.LastIndexOf('WHERE') - 1;
   if _lastPos = -1 then
   begin
     _lastPos := Length(_tempQueryStmt);
@@ -311,10 +311,10 @@ var
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastPos := AnsiPos('ORDER', _tempQueryStmt) - 1;
+  _lastPos := _tempQueryStmt.LastIndexOf('ORDER') - 1;
   if _lastPos = -1 then
   begin
-    _lastPos := AnsiPos('LIMIT', _tempQueryStmt) - 1;
+    _lastPos := _tempQueryStmt.LastIndexOf('LIMIT') - 1;
     if _lastPos = -1 then
     begin
       _lastPos := Length(_tempQueryStmt);
