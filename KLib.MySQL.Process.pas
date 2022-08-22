@@ -46,7 +46,6 @@ type
 
   TMySQLProcess = class
   private
-    isVC_RedistInstalled: boolean;
     function checkIfMySQLIsStarted: boolean;
     function getMySQLCredentials: TMySQLCredentials;
     function getCredentials: TCredentials;
@@ -78,30 +77,31 @@ uses
 constructor TMySQLProcess.create(mySQLInfo: TMySQLInfo);
 const
   ERR_MSG = 'MySQL version were not being specified.';
-  NOT_ACCORDING_WINDOWS_ARCHITECTURE = false;
 var
   _tempCredentials: TMySQLCredentials;
 begin
-  validateThatFileExists(mySQLInfo.path_ini);
-  validateThatFileExists(mySQLInfo.path_mysqld);
-  validateThatDirExists(mySQLInfo.path_datadirIniFile);
-  case mySQLInfo.version of
+  Self.info := mySQLInfo;
+
+  validateThatFileExists(Self.info.path_ini);
+  validateThatFileExists(Self.info.path_mysqld);
+  validateThatDirExists(Self.info.path_datadirIniFile);
+
+  case Self.info.version of
     TMySQLVersion.v5_7:
-      isVC_RedistInstalled := checkIfVC_Redist2013IsInstalled(NOT_ACCORDING_WINDOWS_ARCHITECTURE);
+      ;
     TMySQLVersion.v_8:
-      isVC_RedistInstalled := checkIfVC_Redist2019X64IsInstalled;
+      ;
   else
     raise Exception.Create(ERR_MSG);
   end;
-  self.info := mySQLInfo;
 
-  _tempCredentials := self.info.credentials;
+  _tempCredentials := Self.info.credentials;
   with _tempCredentials do
   begin
     server := LOCALHOST_IP_ADDRESS;
     database := EMPTY_STRING;
   end;
-  self.info.credentials := _tempCredentials;
+  Self.info.credentials := _tempCredentials;
 end;
 
 procedure TMySQLProcess.start(autoGetFirstPortAvaliable: boolean = true);
@@ -109,13 +109,25 @@ const
   ERR_MSG_VC_REDIST_NOT_INSTALLED = 'Microsoft Visual C++ Redistributable not installed.';
   SHOW_WINDOW_HIDE = _SW_HIDE;
   RAISE_EXCEPTION_IF_FUNCTION_FAILS = true;
+
+  NOT_ACCORDING_WINDOWS_ARCHITECTURE = false;
 var
   _mysqldParams: string;
   _doubleQuotedIniPath: string;
+  _isVC_RedistInstalled: boolean;
 begin
   if not isStarted then
   begin
-    if not isVC_RedistInstalled then
+    _isVC_RedistInstalled := false;
+
+    case Self.info.version of
+      TMySQLVersion.v5_7:
+        _isVC_RedistInstalled := checkIfVC_Redist2013IsInstalled(NOT_ACCORDING_WINDOWS_ARCHITECTURE);
+      TMySQLVersion.v_8:
+        _isVC_RedistInstalled := checkIfVC_Redist2019X64IsInstalled;
+    end;
+
+    if not _isVC_RedistInstalled then
     begin
       raise Exception.Create(ERR_MSG_VC_REDIST_NOT_INSTALLED);
     end;

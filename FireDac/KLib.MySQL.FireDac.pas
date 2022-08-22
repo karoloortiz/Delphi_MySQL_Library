@@ -34,7 +34,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.FireDac;
+unit KLib.MySQL.FireDac;
 
 interface
 
@@ -64,7 +64,7 @@ procedure getMySQLClientDLLFromResourceIfNotExists;
 implementation
 
 uses
-  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.FireDac.Resources,
+  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.FireDac.Resources,
   Klib.Utils,
   FireDAC.VCLUI.Wait,
   FireDAC.Stan.Def, FireDAC.Stan.Async,

@@ -34,7 +34,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MyDAC;
+unit KLib.MySQL.MyDAC;
 
 interface
 

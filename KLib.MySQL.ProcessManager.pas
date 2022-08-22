@@ -78,6 +78,7 @@ implementation
 uses
   KLib.MySQL.Utils,
   KLib.Async, KLib.AsyncMethod,
+  KLib.MyString,
   Vcl.Dialogs, Vcl.Controls,
   System.SysUtils, System.UITypes;
 
@@ -108,7 +109,7 @@ procedure TMySQLProcessManager.AStart(_then: TCallBack; _catch: TCallback; autoG
 const
   DEFAULT_RESOLVE_MSG_MYSQL_STARTED = 'MySQL started.';
 begin
-  self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
+  Self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
   TAsyncMethod.Create(
     procedure(res: TCallBack; rej: TCallback)
     begin
@@ -127,7 +128,7 @@ end;
 
 procedure TMySQLProcessManager.start(autoGetFirstPortAvaliable: boolean = true);
 begin
-  self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
+  Self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
   startMySQLProcess;
 end;
 
@@ -177,17 +178,17 @@ const
     'SELECT' + sLineBreak +
     'USER' + sLineBreak +
     'FROM' + sLineBreak +
-    'information_schema.PROCESSLIST';
+    'information_schema.PROCESSLIST' + sLineBreak +
+    'WHERE' + sLineBreak +
+    'USER <> (IF(@@event_scheduler = "ON", "event_scheduler", ""))';
 var
+  _result: boolean;
   _query: TQuery;
   _realNumberConnections: integer;
-  _result: boolean;
 begin
   _result := false;
 
-  _query := TQuery.Create(nil);
-  _query.Connection := self.connection;
-  _query.SQL.Text := SELECT_USER;
+  _query := getTQuery(connection, SELECT_USER);
   _query.Open;
   _realNumberConnections := _query.RecordCount - 1;
   if _realNumberConnections = 0 then
@@ -214,43 +215,71 @@ end;
 
 function TMySQLProcessManager.canYouShutdown_personalConnectionsActived: boolean;
 const
-  PARAM_USERNAME = 'USERNAME';
+  PARAM_USER = ':USER';
+  PARAM_HAVING_CONDITION = ':HAVING_CONDITION';
+
+  SELECT_USER_WHERE_PARAM_USER_PARAM_HAVING_CONDITION =
+    'SELECT' + sLineBreak +
+    'USER' + sLineBreak +
+    'FROM' + sLineBreak +
+    'information_schema.PROCESSLIST' + sLineBreak +
+    'WHERE' + sLineBreak +
+    'USER <> (IF(@@event_scheduler = "ON", "event_scheduler", ""))' + sLineBreak +
+    'AND USER = ' + PARAM_USER + sLineBreak +
+    'GROUP BY' + sLineBreak +
+    'USER' + sLineBreak +
+    'HAVING' + sLineBreak +
+    'COUNT(USER) ' + PARAM_HAVING_CONDITION + sLineBreak +
+    '' + sLineBreak +
+    'UNION ALL' + sLineBreak +
+    '' + sLineBreak +
+    'SELECT' + sLineBreak +
+    'USER' + sLineBreak +
+    'FROM' + sLineBreak +
+    'information_schema.PROCESSLIST' + sLineBreak +
+    'WHERE' + sLineBreak +
+    'USER <> (IF(@@event_scheduler = "ON", "event_scheduler", ""))' + sLineBreak +
+    'AND USER <> ' + PARAM_USER + sLineBreak +
+    'AND EXISTS (' + sLineBreak +
+    '	SELECT' + sLineBreak +
+    '	USER' + sLineBreak +
+    '	FROM' + sLineBreak +
+    '	information_schema.PROCESSLIST' + sLineBreak +
+    '	WHERE' + sLineBreak +
+    '	USER <> (IF(@@event_scheduler = "ON", "event_scheduler", ""))' + sLineBreak +
+    '	AND USER = ' + PARAM_USER + sLineBreak +
+    '	GROUP BY' + sLineBreak +
+    '	USER' + sLineBreak +
+    '	HAVING' + sLineBreak +
+    '	COUNT(USER) = 1' + sLineBreak +
+    ')' + sLineBreak +
+    'GROUP BY' + sLineBreak +
+    'USER';
 var
   _result: boolean;
   _query: TQuery;
-  _username: string;
+  _queryStmt: myString;
+  _user: string;
   _realNumberConnections: integer;
-begin
-  _username := mySQLProcess.info.credentials.credentials.username;
-  _query := TQuery.Create(nil);
-  _query.Connection := self.connection;
 
-  _query.SQL.Clear;
-  _query.SQL.Add('SELECT  USER');
-  _query.SQL.Add('FROM information_schema.PROCESSLIST');
-  _query.SQL.Add('WHERE  USER = :' + PARAM_USERNAME);
-  _query.SQL.Add('GROUP BY USER');
+  _havingCondition: string;
+begin
+  _user := mySQLProcess.info.credentials.credentials.username;
   _realNumberConnections := numberActiveConnections + 1;
   if numberActiveConnections > 1 then
   begin
-    _query.SQL.Add('HAVING COUNT(USER) BETWEEN ' + IntToStr(_realNumberConnections - 1) + ' AND ' + IntToStr(_realNumberConnections));
+    _havingCondition := 'BETWEEN ' + IntToStr(_realNumberConnections - 1) + ' AND ' + IntToStr(_realNumberConnections);
   end
   else
   begin
-    _query.SQL.Add('HAVING COUNT(USER) > ' + IntToStr(_realNumberConnections));
+    _havingCondition := '> ' + IntToStr(_realNumberConnections);
   end;
-  _query.SQL.Add('UNION ALL');
-  _query.SQL.Add('SELECT  USER');
-  _query.SQL.Add('FROM information_schema.PROCESSLIST');
-  _query.SQL.Add('WHERE USER <> :' + PARAM_USERNAME + ' AND EXISTS (');
-  _query.SQL.Add('SELECT  USER');
-  _query.SQL.Add('FROM information_schema.PROCESSLIST');
-  _query.SQL.Add('WHERE  USER = :' + PARAM_USERNAME);
-  _query.SQL.Add('GROUP BY USER');
-  _query.SQL.Add('HAVING COUNT(USER) = 1');
-  _query.SQL.Add(')');
-  _query.SQL.Add('GROUP BY USER;');
-  _query.ParamByName(PARAM_USERNAME).AsString := _username;
+
+  _queryStmt := SELECT_USER_WHERE_PARAM_USER_PARAM_HAVING_CONDITION;
+  _queryStmt.setParamAsDoubleQuotedString(PARAM_USER, _user);
+  _queryStmt.setParamAsString(PARAM_HAVING_CONDITION, _havingCondition);
+
+  _query := getTQuery(connection, _queryStmt);
 
   _query.Open;
   if _query.RecordCount = 0 then
@@ -266,6 +295,7 @@ begin
     end;
   end;
   FreeAndNil(_query);
+
   Result := _result;
 end;
 
