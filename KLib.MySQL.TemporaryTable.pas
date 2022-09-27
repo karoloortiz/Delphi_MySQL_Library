@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -67,7 +67,6 @@ uses
   KLib.MyString,
   System.SysUtils;
 
-//todo MOVE IN KLIB.MYSQL.CONSTANTS?
 function getCreateTemporaryTableFromQuery_SQLStmt(tableName: string; queryStmt: string): string;
 const
   PARAM_TABLENAME = ':TABLENAME';

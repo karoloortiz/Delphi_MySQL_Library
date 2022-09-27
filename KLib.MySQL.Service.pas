@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -54,14 +54,11 @@ type
     procedure setMysqlCredentials(value: TMySQLCredentials);
     function getPort: integer;
     procedure setPort(value: integer);
-    //    function getCredentials: TCredentials;
-    //    procedure setCredentials(value: TCredentials);
   public
     info: TMySQLInfo;
     property nameService: string read _nameService;
     property mysqlCredentials: TMySQLCredentials read getMysqlCredentials write setMysqlCredentials;
     property port: integer read getPort write setPort;
-    //    property credentials: TCredentials read getCredentials write setCredentials;
 
     constructor create(nameService: string; mySQLInfo: TMySQLInfo); overload;
     constructor create(nameService: string); overload;
@@ -92,7 +89,7 @@ implementation
 uses
   KLib.MySQL.CLIUtilities, KLib.MySQL.Utils,
   KLib.WindowsService, KLib.Windows, KLib.Constants, KLib.Utils, KLib.Validate,
-  Klib.Async,
+  Klib.Asyncify,
   System.SysUtils;
 
 constructor TMySQLService.Create(nameService: string; mySQLInfo: TMySQLInfo);
@@ -165,7 +162,7 @@ end;
 
 procedure TMySQLService.ACreateService(myCallbacks: TCallBacks; forceInstall: boolean = false);
 begin
-  asyncifyAnonymousMethod(
+  asyncify(
     procedure
     begin
       createService(forceInstall);

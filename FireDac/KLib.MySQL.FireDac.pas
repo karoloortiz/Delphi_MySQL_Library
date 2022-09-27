@@ -1,5 +1,5 @@
 {
-  KLib Version = 1.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -65,7 +65,7 @@ implementation
 
 uses
   KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.FireDac.Resources,
-  Klib.Utils,
+  Klib.Utils, KLib.Windows,
   FireDAC.VCLUI.Wait,
   FireDAC.Stan.Def, FireDAC.Stan.Async,
   FireDac.DApt,

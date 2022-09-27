@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -77,7 +77,7 @@ implementation
 
 uses
   KLib.MySQL.Utils,
-  KLib.Async, KLib.AsyncMethod,
+  KLib.Asyncify, KLib.AsyncMethod,
   KLib.MyString,
   Vcl.Dialogs, Vcl.Controls,
   System.SysUtils, System.UITypes;
@@ -97,7 +97,7 @@ end;
 procedure TMySQLProcessManager.AStart(reply: TAsyncifyMethodReply; autoGetFirstPortAvaliable: boolean = true);
 begin
   Self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
-  asyncifyMethod(startMySQLProcess, reply);
+  asyncify(startMySQLProcess, reply);
 end;
 
 procedure TMySQLProcessManager.AStart(callBacks: TCallbacks; autoGetFirstPortAvaliable: boolean = true);
