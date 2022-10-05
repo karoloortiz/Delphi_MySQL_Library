@@ -62,6 +62,7 @@ function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = fal
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
+procedure executeScript(scriptSQL: string; connection: TConnection);
 procedure executeQuery(sqlStatement: string; connection: TConnection);
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
@@ -469,13 +470,57 @@ begin
   executeQuery(_queryStmt, connection);
 end;
 
+procedure executeScript(scriptSQL: string; connection: TConnection);
+const
+  DEFAULT_DELIMITER = ';';
+  DELIMITER_STMT = 'DELIMITER ';
+var
+  _delimiterStartPosition: integer;
+  _currentQuery: string;
+  _delimiter: string;
+  _scriptSQL: STRING;
+
+  _exit: boolean;
+begin
+  _delimiter := DEFAULT_DELIMITER;
+  _scriptSQL := scriptSQL;
+  _exit := false;
+
+  while not _exit do
+  begin
+    _delimiterStartPosition := myAnsiPos(_delimiter, _scriptSQL, NOT_CASE_SENSITIVE);
+    splitStrings(_scriptSQL, _delimiterStartPosition, Length(_delimiter), _currentQuery, _scriptSQL);
+
+    executeQuery(_currentQuery, connection);
+
+    _scriptSQL := _scriptSQL.TrimLeft;
+    if _scriptSQL.StartsWith(DELIMITER_STMT, true) then
+    begin
+      _scriptSQL := _scriptSQL.Remove(0, Length(DELIMITER_STMT));
+      _delimiter := _scriptSQL.Chars[0];
+
+      _scriptSQL := _scriptSQL.Remove(0, 1);
+    end;
+    _scriptSQL := _scriptSQL.TrimRight;
+    if _scriptSQL.Length = 0 then
+    begin
+      _exit := true;
+    end;
+  end;
+end;
+
 procedure executeQuery(sqlStatement: string; connection: TConnection);
 var
   _query: TQuery;
 begin
   _query := getTQuery(connection, sqlStatement);
-  _query.ExecSQL;
-  FreeAndNil(_query);
+  try
+    _query.ExecSQL;
+  finally
+    begin
+      FreeAndNil(_query);
+    end;
+  end;
 end;
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;

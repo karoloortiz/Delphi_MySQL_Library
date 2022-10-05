@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -44,9 +44,13 @@ uses
 
 type
   T_Query = class(MyAccess.TMyQuery)
+  public
+    destructor Destroy; override;
   end;
 
   T_Connection = class(MyAccess.TMyConnection)
+  public
+    constructor Create(mySQLCredentials: TMySQLCredentials); overload;
   end;
 
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
@@ -59,13 +63,33 @@ implementation
 uses
   KLib.MySQL.Utils, KLib.MySQL.Validate;
 
+destructor T_Query.Destroy;
+begin
+  inherited;
+end;
+
+constructor T_Connection.Create(mySQLCredentials: TMySQLCredentials);
+begin
+  inherited Create(nil);
+  with Self do
+  begin
+    Server := mysqlCredentials.server;
+    Username := mysqlCredentials.credentials.username;
+    Password := mysqlCredentials.credentials.password;
+    Port := mysqlCredentials.port;
+    Database := mysqlCredentials.database;
+  end;
+end;
+
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 var
-  _MyConnection: TMyConnection;
   connection: T_Connection;
+
+  _MyConnection: TMyConnection;
 begin
   _MyConnection := getMySQLTMyConnection(mySQLCredentials);
   connection := T_Connection(_MyConnection);
+
   Result := connection;
 end;
 
@@ -75,6 +99,7 @@ var
 begin
   validateMySQLCredentials(mySQLCredentials);
   connection := getMySQLTMyConnection(mySQLCredentials);
+
   Result := connection;
 end;
 
@@ -84,20 +109,15 @@ var
 begin
   validateRequiredMySQLProperties(mySQLCredentials);
   connection := TMyConnection.Create(nil);
-  with mySQLCredentials do
+  with connection do
   begin
-    connection.Server := server;
-    with credentials do
-    begin
-      connection.Username := username;
-      connection.Password := password;
-    end;
-    connection.Port := port;
-    if database <> '' then
-    begin
-      connection.Database := database;
-    end;
+    Server := mysqlCredentials.server;
+    Username := mysqlCredentials.credentials.username;
+    Password := mysqlCredentials.credentials.password;
+    Port := mysqlCredentials.port;
+    Database := mysqlCredentials.database;
   end;
+
   Result := connection;
 end;
 

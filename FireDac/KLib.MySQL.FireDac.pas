@@ -44,14 +44,22 @@ uses
 
 type
   T_Query = class(FireDAC.Comp.Client.TFDQuery)
+  public
+    destructor Destroy; override;
   end;
 
   T_Connection = class(FireDAC.Comp.Client.TFDConnection)
   private
-    function getPort: integer;
-    procedure setport(value: integer);
+    function _get_database: string;
+    procedure _set_database(value: string);
+    function _get_port: integer;
+    procedure _set_port(value: integer);
   public
-    property port: integer read getPort write setPort;
+    property database: string read _get_database write _set_database;
+    property port: integer read _get_port write _set_port;
+
+    constructor Create(mySQLCredentials: TMySQLCredentials); overload;
+    destructor Destroy; override;
   end;
 
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
@@ -72,23 +80,61 @@ uses
   FireDAC.Phys.MySQLDef, FireDAC.Phys.MySQL,
   System.SysUtils;
 
-function T_Connection.getPort: integer;
+destructor T_Query.Destroy;
+begin
+  inherited;
+end;
+
+constructor T_Connection.Create(mySQLCredentials: TMySQLCredentials);
+begin
+  inherited Create(nil);
+
+  LoginPrompt := false;
+  DriverName := 'MySQL';
+  with Params do
+  begin
+    Values['Server'] := mySQLCredentials.server;
+    Values['User_Name'] := mySQLCredentials.credentials.username;
+    Values['Password'] := mySQLCredentials.credentials.password;
+    Values['Port'] := IntToStr(mySQLCredentials.port);
+    Values['Database'] := mySQLCredentials.database;
+  end;
+end;
+
+function T_Connection._get_database: string;
+begin
+  Result := TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Database;
+end;
+
+procedure T_Connection._set_database(value: string);
+begin
+  TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Database := value;
+end;
+
+function T_Connection._get_port: integer;
 begin
   Result := TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Port;
 end;
 
-procedure T_Connection.setPort(value: integer);
+procedure T_Connection._set_port(value: integer);
 begin
   TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Port := value;
 end;
 
+destructor T_Connection.Destroy;
+begin
+  inherited;
+end;
+
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 var
-  _FDConnection: TFDConnection;
   connection: T_Connection;
+
+  _FDConnection: TFDConnection;
 begin
   _FDConnection := getMySQLTFDConnection(mySQLCredentials);
   connection := T_Connection(_FDConnection);
+
   Result := connection;
 end;
 
@@ -98,6 +144,7 @@ var
 begin
   validateMySQLCredentials(mySQLCredentials);
   connection := getMySQLTFDConnection(mySQLCredentials);
+
   Result := connection;
 end;
 
@@ -115,19 +162,14 @@ begin
     DriverName := 'MySQL';
     with Params do
     begin
-      with mySQLCredentials do
-      begin
-        Values['Server'] := server;
-        with credentials do
-        begin
-          Values['User_Name'] := username;
-          Values['Password'] := password;
-        end;
-        Values['Port'] := IntToStr(port);
-        Values['Database'] := database;
-      end;
+      Values['Server'] := mySQLCredentials.server;
+      Values['User_Name'] := mySQLCredentials.credentials.username;
+      Values['Password'] := mySQLCredentials.credentials.password;
+      Values['Port'] := IntToStr(mySQLCredentials.port);
+      Values['Database'] := mySQLCredentials.database;
     end;
   end;
+
   Result := connection;
 end;
 

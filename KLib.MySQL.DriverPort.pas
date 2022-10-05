@@ -43,8 +43,8 @@ uses
   // SELECT FIREDAC OR MYDAC.
   // FIREDAC IS AVAILABLE ON COMMUNITY EDITION
   //----------------------------------------------------------------------------
-  KLib.MySQL.FireDac,
-  //  KLib.MySQL.MyDAC,
+  //  KLib.MySQL.FireDac,
+  KLib.MySQL.MyDAC,
   //----------------------------------------------------------------------------
   //############################################################################
   KLib.MySQL.Info;
@@ -53,9 +53,12 @@ type
   TQuery = class(T_Query)
   public
     procedure refreshKeepingPosition;
+    destructor Destroy; override;
   end;
 
   TConnection = class(T_Connection)
+  public
+    destructor Destroy; override;
   end;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
@@ -74,6 +77,16 @@ uses
 procedure TQuery.refreshKeepingPosition;
 begin
   refreshQueryKeepingPosition(Self);
+end;
+
+destructor TQuery.Destroy;
+begin
+  inherited;
+end;
+
+destructor TConnection.Destroy;
+begin
+  inherited;
 end;
 
 procedure refreshQueryKeepingPosition(query: TQuery);

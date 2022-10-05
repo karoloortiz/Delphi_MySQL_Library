@@ -39,7 +39,7 @@ unit KLib.MySQL.Firedac.Resources;
 interface
 
 //##############################################################################
-//                      INCLUDE KLIB.FIREDAC.ASSETS.RC
+//                      INCLUDE KLib.MySQL.Firedac.Assets.rc
 //##############################################################################
 uses
   KLib.Types, KLib.Constants;
