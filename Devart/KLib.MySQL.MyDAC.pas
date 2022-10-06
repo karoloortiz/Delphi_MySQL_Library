@@ -49,7 +49,11 @@ type
   end;
 
   T_Connection = class(MyAccess.TMyConnection)
+  private
+    function _get_pooled: boolean;
+    procedure _set_pooled(value: boolean);
   public
+    property pooled: boolean read _get_pooled write _set_pooled;
     constructor Create(mySQLCredentials: TMySQLCredentials); overload;
   end;
 
@@ -79,6 +83,16 @@ begin
     Port := mysqlCredentials.port;
     Database := mysqlCredentials.database;
   end;
+end;
+
+function T_Connection._get_pooled: boolean;
+begin
+  Result := Self.Pooling;
+end;
+
+procedure T_Connection._set_pooled(value: boolean);
+begin
+  Self.Pooling := value;
 end;
 
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;

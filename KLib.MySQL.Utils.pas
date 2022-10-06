@@ -42,17 +42,25 @@ uses
   KLib.MySQL.DriverPort, KLib.MySQL.Info,
   System.Classes;
 
-procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
-
-function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean;
-function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion;
-function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string;
-function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList;
-function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
+function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean; overload;
+function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
+function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion; overload;
+function getMySQLVersion(connection: TConnection): TMySQLVersion; overload;
+function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string; overload;
+function getMySQLVersionAsString(connection: TConnection): string; overload;
+function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList; overload;
+function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList; overload;
+function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string; overload;
+function getMySQLDataDir(connection: TConnection): string; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
+
+procedure emptyTable(tableName: string; connection: TConnection);
+
+procedure executeScript(scriptSQL: string; connection: TConnection);
+procedure executeQuery(sqlStatement: string; connection: TConnection);
 
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
@@ -60,13 +68,10 @@ function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
-procedure emptyTable(tableName: string; connection: TConnection);
-
-procedure executeScript(scriptSQL: string; connection: TConnection);
-procedure executeQuery(sqlStatement: string; connection: TConnection);
-
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
+
+procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
 
 procedure cleanDataDir_v5_7(pathDataDir: string);
 procedure cleanDataDir_v8(pathDataDir: string);
@@ -78,43 +83,57 @@ uses
   Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
-procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
-var
-  _file: TStringList;
-  _stringBuilder: TStringBuilder;
-
-  _filenameOutput: string;
-begin
-  validateThatFileExists(filename);
-
-  _filenameOutput := filenameOutput;
-  if _filenameOutput = '' then
-  begin
-    _filenameOutput := filename;
-  end;
-  _file := TStringList.Create;
-  _file.LoadFromFile(filename);
-  _stringBuilder := TStringBuilder.Create;
-  _stringBuilder.Append(_file.Text);
-  _stringBuilder.Replace('ENGINE=MyISAM', 'ENGINE=InnoDB');
-  _file.Clear;
-  _file.Text := _stringBuilder.ToString;
-  _file.SaveToFile(_filenameOutput);
-  FreeAndNil(_file);
-  FreeAndNil(_stringBuilder);
-end;
-
 function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean;
 var
-  _version: TMySQLVersion;
   _result: boolean;
+
+  _connection: TConnection;
 begin
-  _version := getMySQLVersion(mySQLCredentials);
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+
+    _result := checkIfMysqlVersionIs_v_8(_connection);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := _result;
+end;
+
+function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean;
+var
+  _result: boolean;
+
+  _version: TMySQLVersion;
+begin
+  _version := getMySQLVersion(connection);
   _result := _version = TMySQLVersion.v_8;
+
   Result := _result;
 end;
 
 function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion;
+var
+  version: TMySQLVersion;
+
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+
+    version := getMySQLVersion(_connection);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := version;
+end;
+
+function getMySQLVersion(connection: TConnection): TMySQLVersion;
 const
   MYSQL_V5_5 = '5.5';
   MYSQL_V5_7 = '5.7';
@@ -122,10 +141,11 @@ const
 
   ERR_MSG = 'Unknown version of MySQL.';
 var
-  _versionAsString: string;
   version: TMySQLVersion;
+
+  _versionAsString: string;
 begin
-  _versionAsString := getMySQLVersionAsString(mySQLCredentials);
+  _versionAsString := getMySQLVersionAsString(connection);
   if AnsiStartsStr(MYSQL_V5_5, _versionAsString) then
   begin
     version := TMySQLVersion.v5_5;
@@ -142,48 +162,109 @@ begin
   begin
     raise Exception.Create(ERR_MSG);
   end;
-  result := version;
+
+  Result := version;
 end;
 
 function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string;
+var
+  version: string;
+
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+
+    version := getMySQLVersionAsString(_connection);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := version;
+end;
+
+function getMySQLVersionAsString(connection: TConnection): string;
 const
   SQL_STATEMENT = 'select @@version';
 var
   version: string;
 begin
-  version := getFirstFieldFromSQLStatement(SQL_STATEMENT, mySQLCredentials);
-  result := version;
+  version := getFirstFieldFromSQLStatement(SQL_STATEMENT, connection);
+
+  Result := version;
 end;
 
 function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList;
+var
+  databases: TStringList;
+
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+
+    databases := getNonStandardsDatabasesAsStringList(_connection);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := databases;
+end;
+
+function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList;
 const
   SQL_STATEMENT = 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME NOT IN (''information_schema'', ''mysql'', ''performance_schema'',''sys'')';
 var
-  _databases: Variant;
   databases: TStringList;
+
+  _databases: Variant;
   i: integer;
-  highBound: integer;
+  _highBound: integer;
 begin
-  _databases := getFirstFieldListFromSQLStatement(SQL_STATEMENT, mySQLCredentials);
+  _databases := getFirstFieldListFromSQLStatement(SQL_STATEMENT, connection);
   databases := TStringList.Create;
 
-  highBound := VarArrayHighBound(_databases, 1);
-  for i := VarArrayLowBound(_databases, 1) to highBound do
+  _highBound := VarArrayHighBound(_databases, 1);
+  for i := VarArrayLowBound(_databases, 1) to _highBound do
   begin
     databases.Add(_databases[i]);
   end;
 
-  result := databases;
+  Result := databases;
 end;
 
 function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
+var
+  dataDir: string;
+
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+
+    dataDir := getMySQLDataDir(_connection);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := dataDir;
+end;
+
+function getMySQLDataDir(connection: TConnection): string;
 const
   SQL_STATEMENT = 'select @@datadir';
 var
   dataDir: string;
 begin
-  dataDir := getFirstFieldFromSQLStatement(SQL_STATEMENT, mySQLCredentials);
-  result := dataDir;
+  dataDir := getFirstFieldFromSQLStatement(SQL_STATEMENT, connection);
+
+  Result := dataDir;
 end;
 
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
@@ -245,12 +326,83 @@ var
   fieldResult: Variant;
 begin
   _query := getTQuery(connection, sqlStatement);
-  _query.open;
-  fieldResult := _query.FieldList.Fields[0].value;
-  _query.Close;
-  FreeAndNil(_query);
+  try
+    _query.open;
+    fieldResult := _query.FieldList.Fields[0].value;
+    _query.Close;
+  finally
+    FreeAndNil(_query);
+  end;
 
   result := fieldResult;
+end;
+
+procedure emptyTable(tableName: string; connection: TConnection);
+const
+  PARAM_TABLENAME = ':TABLENAME';
+  DELETE_FROM_WHERE_PARAM_TABLENAME =
+    'DELETE' + sLineBreak +
+    'FROM' + sLineBreak +
+    PARAM_TABLENAME;
+var
+  _queryStmt: myString;
+begin
+  _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
+  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
+  executeQuery(_queryStmt, connection);
+end;
+
+procedure executeScript(scriptSQL: string; connection: TConnection);
+const
+  DEFAULT_DELIMITER = ';';
+  DELIMITER_STMT = 'DELIMITER ';
+var
+  _delimiterStartPosition: integer;
+  _currentQuery: string;
+  _delimiter: string;
+  _scriptSQL: STRING;
+
+  _exit: boolean;
+begin
+  _delimiter := DEFAULT_DELIMITER;
+  _scriptSQL := scriptSQL;
+  _exit := false;
+
+  while not _exit do
+  begin
+    _delimiterStartPosition := myAnsiPos(_delimiter, _scriptSQL, NOT_CASE_SENSITIVE);
+    splitStrings(_scriptSQL, _delimiterStartPosition, Length(_delimiter), _currentQuery, _scriptSQL);
+
+    executeQuery(_currentQuery, connection);
+
+    _scriptSQL := _scriptSQL.TrimLeft;
+    if _scriptSQL.StartsWith(DELIMITER_STMT, true) then
+    begin
+      _scriptSQL := _scriptSQL.Remove(0, Length(DELIMITER_STMT));
+      _delimiter := _scriptSQL.Chars[0];
+
+      _scriptSQL := _scriptSQL.Remove(0, 1);
+    end;
+    _scriptSQL := _scriptSQL.TrimRight;
+    if _scriptSQL.Length = 0 then
+    begin
+      _exit := true;
+    end;
+  end;
+end;
+
+procedure executeQuery(sqlStatement: string; connection: TConnection);
+var
+  _query: TQuery;
+begin
+  _query := getTQuery(connection, sqlStatement);
+  try
+    _query.ExecSQL;
+  finally
+    begin
+      FreeAndNil(_query);
+    end;
+  end;
 end;
 
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
@@ -455,74 +607,6 @@ begin
   Result := sqlText;
 end;
 
-procedure emptyTable(tableName: string; connection: TConnection);
-const
-  PARAM_TABLENAME = ':TABLENAME';
-  DELETE_FROM_WHERE_PARAM_TABLENAME =
-    'DELETE' + sLineBreak +
-    'FROM' + sLineBreak +
-    PARAM_TABLENAME;
-var
-  _queryStmt: myString;
-begin
-  _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
-  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
-  executeQuery(_queryStmt, connection);
-end;
-
-procedure executeScript(scriptSQL: string; connection: TConnection);
-const
-  DEFAULT_DELIMITER = ';';
-  DELIMITER_STMT = 'DELIMITER ';
-var
-  _delimiterStartPosition: integer;
-  _currentQuery: string;
-  _delimiter: string;
-  _scriptSQL: STRING;
-
-  _exit: boolean;
-begin
-  _delimiter := DEFAULT_DELIMITER;
-  _scriptSQL := scriptSQL;
-  _exit := false;
-
-  while not _exit do
-  begin
-    _delimiterStartPosition := myAnsiPos(_delimiter, _scriptSQL, NOT_CASE_SENSITIVE);
-    splitStrings(_scriptSQL, _delimiterStartPosition, Length(_delimiter), _currentQuery, _scriptSQL);
-
-    executeQuery(_currentQuery, connection);
-
-    _scriptSQL := _scriptSQL.TrimLeft;
-    if _scriptSQL.StartsWith(DELIMITER_STMT, true) then
-    begin
-      _scriptSQL := _scriptSQL.Remove(0, Length(DELIMITER_STMT));
-      _delimiter := _scriptSQL.Chars[0];
-
-      _scriptSQL := _scriptSQL.Remove(0, 1);
-    end;
-    _scriptSQL := _scriptSQL.TrimRight;
-    if _scriptSQL.Length = 0 then
-    begin
-      _exit := true;
-    end;
-  end;
-end;
-
-procedure executeQuery(sqlStatement: string; connection: TConnection);
-var
-  _query: TQuery;
-begin
-  _query := getTQuery(connection, sqlStatement);
-  try
-    _query.ExecSQL;
-  finally
-    begin
-      FreeAndNil(_query);
-    end;
-  end;
-end;
-
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 var
   _connection: TConnection;
@@ -554,6 +638,32 @@ begin
   end;
 
   Result := _result;
+end;
+
+procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
+var
+  _file: TStringList;
+  _stringBuilder: TStringBuilder;
+
+  _filenameOutput: string;
+begin
+  validateThatFileExists(filename);
+
+  _filenameOutput := filenameOutput;
+  if _filenameOutput = '' then
+  begin
+    _filenameOutput := filename;
+  end;
+  _file := TStringList.Create;
+  _file.LoadFromFile(filename);
+  _stringBuilder := TStringBuilder.Create;
+  _stringBuilder.Append(_file.Text);
+  _stringBuilder.Replace('ENGINE=MyISAM', 'ENGINE=InnoDB');
+  _file.Clear;
+  _file.Text := _stringBuilder.ToString;
+  _file.SaveToFile(_filenameOutput);
+  FreeAndNil(_file);
+  FreeAndNil(_stringBuilder);
 end;
 
 procedure cleanDataDir_v5_7(pathDataDir: string);

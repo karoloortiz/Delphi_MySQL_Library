@@ -47,7 +47,8 @@ uses
   KLib.MySQL.MyDAC,
   //----------------------------------------------------------------------------
   //############################################################################
-  KLib.MySQL.Info;
+  KLib.MySQL.Info,
+  System.Classes;
 
 type
   TQuery = class(T_Query)
@@ -58,6 +59,20 @@ type
 
   TConnection = class(T_Connection)
   public
+    function checkIfMysqlVersionIs_v_8: boolean; virtual;
+    function getMySQLVersion: TMySQLVersion; virtual;
+    function getMySQLVersionAsString: string; virtual;
+    function getNonStandardsDatabasesAsStringList: TStringList; virtual;
+    function getMySQLDataDir: string; virtual;
+    function getFirstFieldListFromSQLStatement(sqlStatement: string): Variant; virtual;
+    function getFirstFieldFromSQLStatement(sqlStatement: string): Variant; virtual;
+
+    procedure emptyTable(tableName: string); virtual;
+
+    procedure executeScript(scriptSQL: string); virtual;
+    procedure executeQuery(sqlStatement: string); virtual;
+
+    function getACopyConnection: TConnection; virtual;
     destructor Destroy; override;
   end;
 
@@ -71,8 +86,68 @@ function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 implementation
 
 uses
-  KLib.MySQL.Validate,
+  KLib.MySQL.Validate, KLib.MySQL.Utils,
   Data.DB;
+
+function TConnection.checkIfMysqlVersionIs_v_8: boolean;
+begin
+  Result := KLib.MySQL.Utils.checkIfMysqlVersionIs_v_8(Self);
+end;
+
+function TConnection.getMySQLVersion: TMySQLVersion;
+begin
+  Result := KLib.MySQL.Utils.getMySQLVersion(Self);
+end;
+
+function TConnection.getMySQLVersionAsString: string;
+begin
+  Result := KLib.MySQL.Utils.getMySQLVersionAsString(Self);
+end;
+
+function TConnection.getNonStandardsDatabasesAsStringList: TStringList;
+begin
+  Result := KLib.MySQL.Utils.getNonStandardsDatabasesAsStringList(Self);
+end;
+
+function TConnection.getMySQLDataDir: string;
+begin
+  Result := KLib.MySQL.Utils.getMySQLDataDir(Self);
+end;
+
+function TConnection.getFirstFieldListFromSQLStatement(sqlStatement: string): Variant;
+begin
+  Result := KLib.MySQL.Utils.getFirstFieldListFromSQLStatement(sqlStatement, Self);
+end;
+
+function TConnection.getFirstFieldFromSQLStatement(sqlStatement: string): Variant;
+begin
+  Result := KLib.MySQL.Utils.getFirstFieldFromSQLStatement(sqlStatement, Self);
+end;
+
+procedure TConnection.emptyTable(tableName: string);
+begin
+  KLib.MySQL.Utils.emptyTable(tableName, Self);
+end;
+
+procedure TConnection.executeScript(scriptSQL: string);
+begin
+  KLib.MySQL.Utils.executeScript(scriptSQL, Self);
+end;
+
+procedure TConnection.executeQuery(sqlStatement: string);
+begin
+  KLib.MySQL.Utils.executeQuery(sqlStatement, Self);
+end;
+
+function TConnection.getACopyConnection: TConnection;
+var
+  connection: TConnection;
+begin
+  connection := TConnection.Create(nil);
+  connection.Assign(Self);
+
+  Result := connection;
+end;
 
 procedure TQuery.refreshKeepingPosition;
 begin

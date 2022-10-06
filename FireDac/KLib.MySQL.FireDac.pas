@@ -54,9 +54,12 @@ type
     procedure _set_database(value: string);
     function _get_port: integer;
     procedure _set_port(value: integer);
+    function _get_pooled: boolean;
+    procedure _set_pooled(value: boolean);
   public
     property database: string read _get_database write _set_database;
     property port: integer read _get_port write _set_port;
+    property pooled: boolean read _get_pooled write _set_pooled;
 
     constructor Create(mySQLCredentials: TMySQLCredentials); overload;
     destructor Destroy; override;
@@ -119,6 +122,16 @@ end;
 procedure T_Connection._set_port(value: integer);
 begin
   TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Port := value;
+end;
+
+function T_Connection._get_pooled: boolean;
+begin
+  Result := TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Pooled;
+end;
+
+procedure T_Connection._set_pooled(value: boolean);
+begin
+  TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Pooled := value;
 end;
 
 destructor T_Connection.Destroy;
