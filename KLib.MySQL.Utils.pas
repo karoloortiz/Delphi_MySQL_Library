@@ -52,6 +52,8 @@ function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredential
 function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList; overload;
 function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string; overload;
 function getMySQLDataDir(connection: TConnection): string; overload;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): TStringList; overload;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
@@ -220,19 +222,8 @@ const
   SQL_STATEMENT = 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME NOT IN (''information_schema'', ''mysql'', ''performance_schema'',''sys'')';
 var
   databases: TStringList;
-
-  _databases: Variant;
-  i: integer;
-  _highBound: integer;
 begin
-  _databases := getFirstFieldListFromSQLStatement(SQL_STATEMENT, connection);
-  databases := TStringList.Create;
-
-  _highBound := VarArrayHighBound(_databases, 1);
-  for i := VarArrayLowBound(_databases, 1) to _highBound do
-  begin
-    databases.Add(_databases[i]);
-  end;
+  databases := getFirstFieldStringListFromSQLStatement(SQL_STATEMENT, connection);
 
   Result := databases;
 end;
@@ -267,63 +258,100 @@ begin
   Result := dataDir;
 end;
 
-function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): TStringList;
 var
+  fieldStringList: TStringList;
+
   _connection: TConnection;
-  fieldListResult: Variant;
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
-  _connection.Connected := true;
+  try
+    _connection.Connected := true;
+    fieldStringList := getFirstFieldStringListFromSQLStatement(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
 
-  fieldListResult := getFirstFieldListFromSQLStatement(sqlStatement, _connection);
+  Result := fieldStringList;
+end;
 
-  _connection.Connected := false;
-  FreeAndNil(_connection);
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList;
+var
+  fieldStringList: TStringList;
 
-  result := fieldListResult;
+  _fieldList: Variant;
+begin
+  _fieldList := getFirstFieldListFromSQLStatement(sqlStatement, connection);
+  fieldStringList := arrayOfVariantToTStringList(_fieldList);
+  Result := fieldStringList;
+end;
+
+function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+var
+  fieldListResult: Variant;
+
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+    fieldListResult := getFirstFieldListFromSQLStatement(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := fieldListResult;
 end;
 
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant;
 var
-  _query: TQuery;
   fieldListResult: Variant;
+
+  _query: TQuery;
   i: integer;
 begin
   _query := getTQuery(connection, sqlStatement);
-
-  _query.open;
-  fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
-  for i := 0 to _query.RecordCount - 1 do
-  begin
-    fieldListResult[i] := _query.FieldList.Fields[0].value;
-    _query.Next;
+  try
+    _query.open;
+    fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
+    for i := 0 to _query.RecordCount - 1 do
+    begin
+      fieldListResult[i] := _query.FieldList.Fields[0].value;
+      _query.Next;
+    end;
+    _query.Close;
+  finally
+    FreeAndNil(_query);
   end;
-  _query.Close;
-  FreeAndNil(_query);
 
-  result := fieldListResult;
+  Result := fieldListResult;
 end;
 
 function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
 var
-  _connection: TConnection;
   fieldResult: Variant;
+
+  _connection: TConnection;
 begin
   _connection := getValidMySQLTConnection(mysqlCredentials);
-  _connection.Connected := true;
+  try
+    _connection.Connected := true;
+    fieldResult := getFirstFieldFromSQLStatement(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
 
-  fieldResult := getFirstFieldFromSQLStatement(sqlStatement, _connection);
-
-  _connection.Connected := false;
-  FreeAndNil(_connection);
-
-  result := fieldResult;
+  Result := fieldResult;
 end;
 
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant;
 var
-  _query: TQuery;
   fieldResult: Variant;
+
+  _query: TQuery;
 begin
   _query := getTQuery(connection, sqlStatement);
   try
@@ -334,7 +362,7 @@ begin
     FreeAndNil(_query);
   end;
 
-  result := fieldResult;
+  Result := fieldResult;
 end;
 
 procedure emptyTable(tableName: string; connection: TConnection);
@@ -408,6 +436,7 @@ end;
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 var
   _result: string;
+
   _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
@@ -423,6 +452,7 @@ end;
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
 var
   _result: string;
+
   _joinFieldStmtAlreadyExists: boolean;
 begin
   _joinFieldStmtAlreadyExists := checkIfMainStringContainsSubStringNoCaseSensitive(sqlStatement, joinFieldStmt);
@@ -441,6 +471,7 @@ end;
 function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt: string): string;
 var
   _result: string;
+
   _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
@@ -460,6 +491,7 @@ end;
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 var
   _result: string;
+
   _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
@@ -483,6 +515,7 @@ end;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 var
   sqlText: myString;
+
   i: integer;
   _paramName: string;
   _paramValue: Variant;
@@ -609,8 +642,9 @@ end;
 
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 var
-  _connection: TConnection;
   _result: boolean;
+
+  _connection: TConnection;
 begin
   _connection := getMySQLTConnection(mySQLCredentials);
   try
@@ -644,7 +678,6 @@ procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = ''
 var
   _file: TStringList;
   _stringBuilder: TStringBuilder;
-
   _filenameOutput: string;
 begin
   validateThatFileExists(filename);
@@ -655,15 +688,18 @@ begin
     _filenameOutput := filename;
   end;
   _file := TStringList.Create;
-  _file.LoadFromFile(filename);
   _stringBuilder := TStringBuilder.Create;
-  _stringBuilder.Append(_file.Text);
-  _stringBuilder.Replace('ENGINE=MyISAM', 'ENGINE=InnoDB');
-  _file.Clear;
-  _file.Text := _stringBuilder.ToString;
-  _file.SaveToFile(_filenameOutput);
-  FreeAndNil(_file);
-  FreeAndNil(_stringBuilder);
+  try
+    _file.LoadFromFile(filename);
+    _stringBuilder.Append(_file.Text);
+    _stringBuilder.Replace('ENGINE=MyISAM', 'ENGINE=InnoDB');
+    _file.Clear;
+    _file.Text := _stringBuilder.ToString;
+    _file.SaveToFile(_filenameOutput);
+  finally
+    FreeAndNil(_file);
+    FreeAndNil(_stringBuilder);
+  end;
 end;
 
 procedure cleanDataDir_v5_7(pathDataDir: string);

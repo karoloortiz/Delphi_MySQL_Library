@@ -54,7 +54,7 @@ type
     procedure _set_pooled(value: boolean);
   public
     property pooled: boolean read _get_pooled write _set_pooled;
-    constructor Create(mySQLCredentials: TMySQLCredentials); overload;
+    constructor Create(mySQLCredentials: TMySQLCredentials); reintroduce; overload;
   end;
 
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;

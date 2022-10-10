@@ -61,7 +61,7 @@ type
     property port: integer read _get_port write _set_port;
     property pooled: boolean read _get_pooled write _set_pooled;
 
-    constructor Create(mySQLCredentials: TMySQLCredentials); overload;
+    constructor Create(mySQLCredentials: TMySQLCredentials); reintroduce; overload;
     destructor Destroy; override;
   end;
 
