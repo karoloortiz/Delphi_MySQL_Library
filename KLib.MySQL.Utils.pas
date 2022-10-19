@@ -720,10 +720,13 @@ const
     );
 var
   _innodb_temp_path: string;
+  _innodb_redo_path: string;
 begin
   deleteFilesInDir(pathDataDir, LIST_FILES_TO_KEEP);
   _innodb_temp_path := getCombinedPath(pathDataDir, '#innodb_temp');
   deleteFileIfExists(_innodb_temp_path);
+  _innodb_redo_path := getCombinedPath(pathDataDir, '#innodb_redo');
+  createDirIfNotExists(_innodb_redo_path);
 end;
 
 end.
