@@ -168,8 +168,9 @@ procedure refreshQueryKeepingPosition(query: TQuery);
 var
   _bookmark: TBookmark;
 begin
-  _bookmark := query.GetBookmark;
-  query.Refresh;
+  _bookmark := Query.GetBookmark;
+  query.Close;
+  query.Open;
   query.GotoBookmark(_bookmark);
 end;
 
