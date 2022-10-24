@@ -40,6 +40,7 @@ interface
 
 uses
   KLib.MySQL.DriverPort, KLib.MySQL.Info,
+  KLib.Constants,
   System.Classes;
 
 function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean; overload;
@@ -73,7 +74,8 @@ function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = fal
 function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
 function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
 
-procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
+procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
+procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 
 procedure cleanDataDir_v5_7(pathDataDir: string);
 procedure cleanDataDir_v8(pathDataDir: string);
@@ -81,7 +83,7 @@ procedure cleanDataDir_v8(pathDataDir: string);
 implementation
 
 uses
-  KLib.Validate, KLib.MyString, KLib.Utils, KLib.Constants,
+  KLib.Validate, KLib.MyString, KLib.Utils,
   Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
@@ -219,7 +221,7 @@ end;
 
 function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList;
 const
-  SQL_STATEMENT = 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME NOT IN (''information_schema'', ''mysql'', ''performance_schema'',''sys'')';
+  SQL_STATEMENT = 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME NOT IN ("information_schema", "mysql", "performance_schema", "sys")';
 var
   databases: TStringList;
 begin
@@ -668,38 +670,21 @@ var
 begin
   with mySQLCredentials do
   begin
-    _result := (server <> '') and (credentials.username <> '') and (credentials.password <> '') and (port <> 0);
+    _result := (server <> EMPTY_STRING) and (credentials.username <> EMPTY_STRING)
+      and (credentials.password <> EMPTY_STRING) and (port <> 0);
   end;
 
   Result := _result;
 end;
 
-procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = '');
-var
-  _file: TStringList;
-  _stringBuilder: TStringBuilder;
-  _filenameOutput: string;
+procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 begin
-  validateThatFileExists(filename);
+  replaceTextInFile('ENGINE=MyISAM', 'ENGINE=InnoDB', filename, filenameOutput);
+end;
 
-  _filenameOutput := filenameOutput;
-  if _filenameOutput = '' then
-  begin
-    _filenameOutput := filename;
-  end;
-  _file := TStringList.Create;
-  _stringBuilder := TStringBuilder.Create;
-  try
-    _file.LoadFromFile(filename);
-    _stringBuilder.Append(_file.Text);
-    _stringBuilder.Replace('ENGINE=MyISAM', 'ENGINE=InnoDB');
-    _file.Clear;
-    _file.Text := _stringBuilder.ToString;
-    _file.SaveToFile(_filenameOutput);
-  finally
-    FreeAndNil(_file);
-    FreeAndNil(_stringBuilder);
-  end;
+procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
+begin
+  replaceTextInFile('NO_AUTO_CREATE_USER', EMPTY_STRING, filename, filenameOutput);
 end;
 
 procedure cleanDataDir_v5_7(pathDataDir: string);

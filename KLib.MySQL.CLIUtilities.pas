@@ -44,12 +44,19 @@ uses
 
 type
   TMysqldumpArgs = record
+  public
     pathMysqldumpExe: string;
     mySQLCredentials: TMySQLCredentials;
     fileNameOut: string;
     skipTriggers: boolean;
+    routines: boolean;
+
+    remove_NO_AUTO_CREATE_USER: boolean;
+
     dumpAllNonStandardDatabases: boolean;
     databasesList: TStringList;
+
+    procedure clear;
   end;
 
 procedure mysqldump(args: TMysqldumpArgs);
@@ -86,22 +93,35 @@ begin
     _databasesList := TStringList.Create;
     _databasesList.Assign(args.databasesList);
   end;
-  _databasesList.LineBreak := ' ';
-  _databases := _databasesList.Text;
 
-  with args do
-  begin
-    _paramsMysqldump := mySQLCredentials.getMySQLCliCredentialsParams;
-    _paramsMysqldump := _paramsMysqldump + ' --databases ' + _databases;
-    if skipTriggers then
+  try
+    _databasesList.LineBreak := ' ';
+    _databases := _databasesList.Text;
+
+    with args do
     begin
-      _paramsMysqldump := _paramsMysqldump + ' --skip-triggers ';
+      _paramsMysqldump := mySQLCredentials.getMySQLCliCredentialsParams;
+      _paramsMysqldump := _paramsMysqldump + ' --databases ' + _databases;
+      if skipTriggers then
+      begin
+        _paramsMysqldump := _paramsMysqldump + ' --skip-triggers ';
+      end;
+      if routines then
+      begin
+        _paramsMysqldump := _paramsMysqldump + ' --routines ';
+      end;
+      _paramsMysqldump := _paramsMysqldump + '> ' + getDoubleQuotedString(fileNameOut);
+      _cmdParams := '/K "' + getDoubleQuotedString(pathMysqldumpExe) + ' ' + _paramsMysqldump + '"' + ' & EXIT';
     end;
-    _paramsMysqldump := _paramsMysqldump + '> ' + getDoubleQuotedString(fileNameOut);
-    _cmdParams := '/K "' + getDoubleQuotedString(pathMysqldumpExe) + ' ' + _paramsMysqldump + '"' + ' & EXIT';
+    shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+
+    if args.remove_NO_AUTO_CREATE_USER then
+    begin
+      remove_NO_AUTO_CREATE_USER_inDumpFile(args.fileNameOut);
+    end;
+  finally
+    FreeAndNil(_databasesList);
   end;
-  shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
-  FreeAndNil(_databasesList);
 end;
 
 procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
@@ -143,6 +163,11 @@ begin
   _paramsMysqladmin := mySQLCredentials.getMySQLCliCredentialsParams;
   _paramsMysqladmin := _paramsMysqladmin + ' shutdown';
   shellExecuteExe(pathMysqladmin, _paramsMysqladmin, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+end;
+
+procedure TMysqldumpArgs.clear;
+begin
+  Self := Default (TMysqldumpArgs);
 end;
 
 end.
