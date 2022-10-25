@@ -78,7 +78,8 @@ type
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 
-function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
+function getTQuery(mySQLCredentials: TMySQLCredentials; sqlText: string = ''): TQuery; overload;
+function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
 function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
 function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
@@ -174,6 +175,24 @@ begin
   query.GotoBookmark(_bookmark);
 end;
 
+function getTQuery(mySQLCredentials: TMySQLCredentials; sqlText: string = ''): TQuery;
+var
+  query: TQuery;
+
+  _connection: TConnection;
+begin
+  _connection := getMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+    query := getTQuery(_connection, sqlText);
+    _connection.Connected := false;
+  finally
+    _connection.Free;
+  end;
+
+  Result := query;
+end;
+
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery;
 var
   query: TQuery;
@@ -182,6 +201,7 @@ begin
   query.connection := connection;
   query.SQL.Clear;
   query.SQL.Text := sqlText;
+
   Result := query;
 end;
 
@@ -191,6 +211,7 @@ var
 begin
   validateMySQLCredentials(mySQLCredentials);
   connection := getMySQLTConnection(mySQLCredentials);
+
   Result := connection;
 end;
 
@@ -199,6 +220,7 @@ var
   connection: T_Connection;
 begin
   connection := _getMySQLTConnection(mySQLCredentials);
+
   Result := TConnection(connection);
 end;
 

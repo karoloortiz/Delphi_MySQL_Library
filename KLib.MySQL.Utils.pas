@@ -62,8 +62,10 @@ function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnec
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
-procedure executeScript(scriptSQL: string; connection: TConnection);
-procedure executeQuery(sqlStatement: string; connection: TConnection);
+procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
+procedure executeScript(scriptSQL: string; connection: TConnection); overload;
+procedure executeQuery(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
+procedure executeQuery(sqlStatement: string; connection: TConnection); overload;
 
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
@@ -382,6 +384,20 @@ begin
   executeQuery(_queryStmt, connection);
 end;
 
+procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+    executeScript(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+end;
+
 procedure executeScript(scriptSQL: string; connection: TConnection);
 const
   DEFAULT_DELIMITER = ';';
@@ -418,6 +434,20 @@ begin
     begin
       _exit := true;
     end;
+  end;
+end;
+
+procedure executeQuery(sqlStatement: string; mysqlCredentials: TMySQLCredentials);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+    executeQuery(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
   end;
 end;
 

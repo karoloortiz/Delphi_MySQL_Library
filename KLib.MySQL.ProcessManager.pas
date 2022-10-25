@@ -68,7 +68,8 @@ type
     procedure AStart(reply: TAsyncifyMethodReply; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(callBacks: TCallbacks; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true); overload;
-    procedure start(autoGetFirstPortAvaliable: boolean = true);
+    procedure start(VC_RedistInstallOpts: TVC_RedistInstallOpts; autoGetFirstPortAvaliable: boolean = true); overload;
+    procedure start(autoGetFirstPortAvaliable: boolean = true); overload;
     procedure shutdown(force: boolean = false);
     destructor Destroy; override;
   end;
@@ -111,10 +112,10 @@ const
 begin
   Self.autoGetFirstPortAvaliable := autoGetFirstPortAvaliable;
   TAsyncMethod.Create(
-    procedure(res: TCallBack; rej: TCallback)
+    procedure(resolve: TCallBack; reject: TCallback)
     begin
       startMySQLProcess;
-      res(DEFAULT_RESOLVE_MSG_MYSQL_STARTED);
+      resolve(DEFAULT_RESOLVE_MSG_MYSQL_STARTED);
     end,
     procedure(value: String)
     begin
@@ -124,6 +125,13 @@ begin
     begin
       _catch(value);
     end);
+end;
+
+procedure TMySQLProcessManager.start(VC_RedistInstallOpts: TVC_RedistInstallOpts;
+autoGetFirstPortAvaliable: boolean = true);
+begin
+  installVC_RedistIfNotExists(VC_RedistInstallOpts);
+  start(autoGetFirstPortAvaliable);
 end;
 
 procedure TMySQLProcessManager.start(autoGetFirstPortAvaliable: boolean = true);
