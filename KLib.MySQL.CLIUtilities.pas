@@ -40,6 +40,7 @@ interface
 
 uses
   KLib.MySQL.Info,
+  KLib.Constants,
   System.Classes;
 
 type
@@ -62,13 +63,14 @@ type
 procedure mysqldump(args: TMysqldumpArgs);
 procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
 procedure mysql_upgrade(pathMysql_upgrade: string; mySQLCredentials: TMySQLCredentials; force: boolean = FALSE);
-procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials);
+procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials;
+  force: boolean = NOT_FORCE);
 
 implementation
 
 uses
   KLib.MySQL.Utils, KLib.MySQL.Validate,
-  KLib.Windows, KLib.Validate, KLib.Utils, KLib.Constants,
+  KLib.Windows, KLib.Validate, KLib.Utils,
   System.SysUtils;
 
 const
@@ -154,15 +156,26 @@ begin
   shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
 end;
 
-procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials);
+procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials;
+  force: boolean = NOT_FORCE);
 var
   _paramsMysqladmin: string;
+  _mysqlIsShutDown: boolean;
 begin
-  validateThatFileExists(pathMysqladmin);
-  validateMySQLCredentials(mySQLCredentials);
-  _paramsMysqladmin := mySQLCredentials.getMySQLCliCredentialsParams;
-  _paramsMysqladmin := _paramsMysqladmin + ' shutdown';
-  shellExecuteExe(pathMysqladmin, _paramsMysqladmin, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+  _mysqlIsShutDown := false;
+  if force then
+  begin
+    _mysqlIsShutDown := not checkMySQLCredentials(mySQLCredentials);
+  end;
+
+  if (not _mysqlIsShutDown) then
+  begin
+    validateThatFileExists(pathMysqladmin);
+    validateMySQLCredentials(mySQLCredentials);
+    _paramsMysqladmin := mySQLCredentials.getMySQLCliCredentialsParams;
+    _paramsMysqladmin := _paramsMysqladmin + ' shutdown';
+    shellExecuteExe(pathMysqladmin, _paramsMysqladmin, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
+  end;
 end;
 
 procedure TMysqldumpArgs.clear;

@@ -62,6 +62,9 @@ function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnec
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
+procedure flushPrivileges(mysqlCredentials: TMySQLCredentials); overload;
+procedure flushPrivileges(connection: TConnection); overload;
+
 procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection); overload;
 procedure executeQuery(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
@@ -382,6 +385,27 @@ begin
   _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
   _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
   executeQuery(_queryStmt, connection);
+end;
+
+procedure flushPrivileges(mysqlCredentials: TMySQLCredentials);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidMySQLTConnection(mysqlCredentials);
+  try
+    _connection.Connected := true;
+    flushPrivileges(_connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+end;
+
+procedure flushPrivileges(connection: TConnection);
+const
+  QUERY_STMT = 'FLUSH PRIVILEGES;';
+begin
+  executeQuery(QUERY_STMT, connection);
 end;
 
 procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials);

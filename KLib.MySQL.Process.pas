@@ -40,7 +40,7 @@ interface
 
 uses
   KLib.MySQL.Info, KLib.VC_Redist,
-  KLib.Types;
+  KLib.Types, KLib.Constants;
 
 type
 
@@ -62,7 +62,7 @@ type
     property port: integer read getPort write setPort;
     constructor create(mySQLInfo: TMySQLInfo);
     procedure start(autoGetFirstPortAvaliable: boolean = true);
-    procedure stop;
+    procedure stop(force: boolean = NOT_FORCE);
     destructor Destroy; override;
   end;
 
@@ -70,7 +70,7 @@ implementation
 
 uses
   KLib.MySQL.Utils, KLib.MySQL.CLIUtilities, KLib.MySQL.Validate,
-  KLib.Utils, KLib.Constants, KLib.Validate, KLib.Windows,
+  KLib.Utils, KLib.Validate, KLib.Windows,
   Vcl.Dialogs, Vcl.Controls,
   System.SysUtils, System.UITypes;
 
@@ -187,11 +187,11 @@ begin
   end;
 end;
 
-procedure TMySQLProcess.stop;
+procedure TMySQLProcess.stop(force: boolean = NOT_FORCE);
 begin
   if isStarted then
   begin
-    mysqladminShutdown(info.path_mysqladmin, info.credentials);
+    mysqladminShutdown(info.path_mysqladmin, info.credentials, force);
   end;
 end;
 

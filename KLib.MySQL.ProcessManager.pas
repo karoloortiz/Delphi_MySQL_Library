@@ -40,7 +40,7 @@ interface
 
 uses
   KLib.MySQL.DriverPort, KLib.MySQL.Process, KLib.MySQL.Info, KLib.VC_Redist,
-  KLib.Types;
+  KLib.Types, KLib.Constants;
 
 type
   TMySQLProcessManager = class
@@ -70,7 +70,7 @@ type
     procedure AStart(_then: TCallBack; _catch: TCallback; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure start(VC_RedistInstallOpts: TVC_RedistInstallOpts; autoGetFirstPortAvaliable: boolean = true); overload;
     procedure start(autoGetFirstPortAvaliable: boolean = true); overload;
-    procedure shutdown(force: boolean = false);
+    procedure shutdown(force: boolean = NOT_FORCE);
     destructor Destroy; override;
   end;
 
@@ -157,13 +157,13 @@ begin
   end;
 end;
 
-procedure TMySQLProcessManager.shutdown(force: boolean = false);
+procedure TMySQLProcessManager.shutdown(force: boolean = NOT_FORCE);
 begin
   if mySQLProcess.isStarted then
   begin
     if (isShutdownEnabled) or (force) then
     begin
-      mySQLProcess.stop;
+      mySQLProcess.stop(force);
     end;
   end;
 end;
