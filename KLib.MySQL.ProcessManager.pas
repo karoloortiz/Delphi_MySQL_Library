@@ -39,7 +39,7 @@ unit KLib.MySQL.ProcessManager;
 interface
 
 uses
-  KLib.MySQL.DriverPort, KLib.MySQL.Process, KLib.MySQL.Info, KLib.VC_Redist,
+  KLib.MySQL.Driver, KLib.MySQL.Process, KLib.MySQL.Info, KLib.VC_Redist,
   KLib.Types, KLib.Constants;
 
 type

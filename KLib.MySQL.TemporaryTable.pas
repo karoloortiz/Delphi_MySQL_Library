@@ -39,7 +39,7 @@ unit KLib.MySQL.TemporaryTable;
 interface
 
 uses
-  KLib.MySQL.DriverPort;
+  KLib.MySQL.Driver;
 
 type
   TTemporaryTable = class

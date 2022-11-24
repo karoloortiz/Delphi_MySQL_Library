@@ -34,19 +34,33 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MySQL.DriverPort;
+unit KLib.MySQL.Driver;
 
 interface
 
+//##############################################################################
+//If you want to have global defines in (IDE -> Project -> Options -> Conditional Defines) adds
+//  KLIB_GLOBALS
+//FOR FIREDAC
+//  KLIB_MYSQL_FIREDAC
+//FOR MYDAC
+//  KLIB_MYSQL_MYDAC
+//##############################################################################
+{$ifndef KLIB_GLOBALS}
+{$include KLib.MySQL.inc}
+{$ifend}
+
+
 uses
-  //############################################################################
-  // SELECT FIREDAC OR MYDAC.
-  // FIREDAC IS AVAILABLE ON COMMUNITY EDITION
   //----------------------------------------------------------------------------
+{$ifdef KLIB_MYSQL_FIREDAC}
   KLib.MySQL.FireDac,
-  //  KLib.MySQL.MyDAC,
+{$else}
+{$ifdef KLIB_MYSQL_MYDAC}
+  KLib.MySQL.MyDAC,
+{$ifend}
+{$ifend}
   //----------------------------------------------------------------------------
-  //############################################################################
   KLib.MySQL.Info,
   System.Classes;
 

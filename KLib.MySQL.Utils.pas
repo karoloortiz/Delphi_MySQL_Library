@@ -39,7 +39,7 @@ unit KLib.MySQL.Utils;
 interface
 
 uses
-  KLib.MySQL.DriverPort, KLib.MySQL.Info,
+  KLib.MySQL.Driver, KLib.MySQL.Info,
   KLib.Constants,
   System.Classes;
 
