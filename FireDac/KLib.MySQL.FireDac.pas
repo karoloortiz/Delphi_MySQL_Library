@@ -101,6 +101,10 @@ begin
     Values['Password'] := mySQLCredentials.credentials.password;
     Values['Port'] := IntToStr(mySQLCredentials.port);
     Values['Database'] := mySQLCredentials.database;
+    if (mySQLCredentials.useSSL) then
+    begin
+      Values['UseSSL'] := 'True';
+    end;
   end;
 end;
 
@@ -180,6 +184,10 @@ begin
       Values['Password'] := mySQLCredentials.credentials.password;
       Values['Port'] := IntToStr(mySQLCredentials.port);
       Values['Database'] := mySQLCredentials.database;
+      if (mySQLCredentials.useSSL) then
+      begin
+        Values['UseSSL'] := 'True';
+      end;
     end;
   end;
 

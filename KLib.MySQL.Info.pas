@@ -47,6 +47,7 @@ type
     server: string;
     port: integer;
     database: string;
+    useSSL: boolean;
     function getMySQLCliCredentialsParams: string;
 
     procedure setDefault;
@@ -58,6 +59,7 @@ const
     server: LOCALHOST_IP_ADDRESS;
     port: 3306;
     database: '';
+    useSSL: false;
   );
 
 type
