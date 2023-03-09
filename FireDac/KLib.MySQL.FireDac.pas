@@ -67,8 +67,6 @@ type
 
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 
-function getValidMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
-function getMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
 procedure getMySQLClientDLLFromResourceIfNotExists;
 //procedure deleteMySQLClientDLLIfExists; //TODO UNLOAD DLL
 
@@ -146,50 +144,10 @@ end;
 function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
 var
   connection: T_Connection;
-
-  _FDConnection: TFDConnection;
-begin
-  _FDConnection := getMySQLTFDConnection(mySQLCredentials);
-  connection := T_Connection(_FDConnection);
-
-  Result := connection;
-end;
-
-function getValidMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
-var
-  connection: TFDConnection;
-begin
-  validateMySQLCredentials(mySQLCredentials);
-  connection := getMySQLTFDConnection(mySQLCredentials);
-
-  Result := connection;
-end;
-
-function getMySQLTFDConnection(mySQLCredentials: TMySQLCredentials): TFDConnection;
-var
-  connection: TFDConnection;
 begin
   validateRequiredMySQLProperties(mySQLCredentials);
   getMySQLClientDLLFromResourceIfNotExists;
-  connection := TFDConnection.Create(nil);
-  with connection do
-  begin
-    LoginPrompt := false;
-
-    DriverName := 'MySQL';
-    with Params do
-    begin
-      Values['Server'] := mySQLCredentials.server;
-      Values['User_Name'] := mySQLCredentials.credentials.username;
-      Values['Password'] := mySQLCredentials.credentials.password;
-      Values['Port'] := IntToStr(mySQLCredentials.port);
-      Values['Database'] := mySQLCredentials.database;
-      if (mySQLCredentials.useSSL) then
-      begin
-        Values['UseSSL'] := 'True';
-      end;
-    end;
-  end;
+  connection := T_Connection.Create(mySQLCredentials);
 
   Result := connection;
 end;
