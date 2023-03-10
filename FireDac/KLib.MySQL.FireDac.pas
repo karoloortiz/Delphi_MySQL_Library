@@ -158,20 +158,19 @@ const
 
 procedure getMySQLClientDLLFromResourceIfNotExists;
 var
-  _path_libmariadb: string;
-  _path_libmysql: string;
+  _path_dll: string;
 begin
 {$ifdef WIN32}
-  _path_libmysql := getCombinedPathWithCurrentDir(FILENAME_LIBMYSQL);
-  if not FileExists(_path_libmysql) then
+  _path_dll := getCombinedPathWithCurrentDir(FILENAME_LIBMYSQL);
+  if not FileExists(_path_dll) then
   begin
-    getResourceAsFile(RESOURCE_LIBMYSQL, _path_libmysql);
+    getResourceAsFile(RESOURCE_LIBMYSQL, _path_dll);
   end;
 {$else IFDEF WIN64}
-  _path_libmariadb := getCombinedPathWithCurrentDir(FILENAME_LIBMARIAB);
-  if not FileExists(_path_libmariadb) then
+  _path_dll := getCombinedPathWithCurrentDir(FILENAME_LIBMARIAB);
+  if not FileExists(_path_dll) then
   begin
-    getResourceAsFile(RESOURCE_LIBMARIADB, _path_libmariadb);
+    getResourceAsFile(RESOURCE_LIBMARIADB, _path_dll);
   end;
 {$endif}
 end;

@@ -89,6 +89,9 @@ implementation
 
 uses
   KLib.Validate, KLib.MyString, KLib.Utils,
+{$ifdef KLIB_MYSQL_FIREDAC}
+  FireDAC.Stan.Param,
+{$ifend}
   Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
