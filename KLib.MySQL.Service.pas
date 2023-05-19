@@ -40,7 +40,7 @@ interface
 
 uses
 
-  KLib.MySQL.Info,
+  KLib.MySQL.Credentials, KLib.MySQL.Info,
   KLib.Types,
   Winapi.Windows,
   System.Classes;
@@ -50,14 +50,14 @@ type
   TMySQLService = class
   private
     _nameService: string;
-    function getMysqlCredentials: TMySQLCredentials;
-    procedure setMysqlCredentials(value: TMySQLCredentials);
+    function getMysqlCredentials: KLib.MySQL.Credentials.TCredentials;
+    procedure setMysqlCredentials(value: KLib.MySQL.Credentials.TCredentials);
     function getPort: integer;
     procedure setPort(value: integer);
   public
     info: TMySQLInfo;
     property nameService: string read _nameService;
-    property mysqlCredentials: TMySQLCredentials read getMysqlCredentials write setMysqlCredentials;
+    property mysqlCredentials: KLib.MySQL.Credentials.TCredentials read getMysqlCredentials write setMysqlCredentials;
     property port: integer read getPort write setPort;
 
     constructor create(nameService: string; mySQLInfo: TMySQLInfo); overload;
@@ -247,7 +247,7 @@ begin
   with _argsMysqldump do
   begin
     pathMysqldumpExe := info.path_mysqldump;
-    mySQLCredentials := self.mysqlCredentials;
+    credentials := self.mysqlCredentials;
     dumpAllNonStandardDatabases := NOT_DUMP_ALL_NON_STANDARD_DATABASES;
   end;
   KLib.MySQL.CLIUtilities.mysqldump(_argsMysqldump);
@@ -265,7 +265,7 @@ begin
   with _argsMysqldump do
   begin
     pathMysqldumpExe := info.path_mysqlpump;
-    mySQLCredentials := self.mysqlCredentials;
+    credentials := self.mysqlCredentials;
     dumpAllNonStandardDatabases := NOT_DUMP_ALL_NON_STANDARD_DATABASES;
   end;
   KLib.MySQL.CLIUtilities.mysqldump(_argsMysqldump);
@@ -279,14 +279,14 @@ begin
   KLib.MySQL.CLIUtilities.importScript(_pathMysqlCli, fileNameIn, mysqlCredentials);
 end;
 
-function TMySQLService.getMysqlCredentials: TMySQLCredentials;
+function TMySQLService.getMysqlCredentials: KLib.MySQL.Credentials.TCredentials;
 begin
   Result := info.credentials;
 end;
 
-procedure TMySQLService.setMysqlCredentials(value: TMySQLCredentials);
+procedure TMySQLService.setMysqlCredentials(value: KLib.MySQL.Credentials.TCredentials);
 var
-  _tempCredentials: TMySQLCredentials;
+  _tempCredentials: KLib.MySQL.Credentials.TCredentials;
 begin
   _tempCredentials := value;
   with _tempCredentials do

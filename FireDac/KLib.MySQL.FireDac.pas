@@ -39,7 +39,7 @@ unit KLib.MySQL.FireDac;
 interface
 
 uses
-  KLib.MySQL.Info,
+  KLib.MySQL.Credentials,
   FireDAC.Comp.Client;
 
 type
@@ -61,11 +61,11 @@ type
     property port: integer read _get_port write _set_port;
     property pooled: boolean read _get_pooled write _set_pooled;
 
-    constructor Create(mySQLCredentials: TMySQLCredentials); reintroduce; overload;
+    constructor Create(credentials: TCredentials); reintroduce; overload;
     destructor Destroy; override;
   end;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function _getMySQLTConnection(credentials: TCredentials): T_Connection;
 
 procedure getMySQLClientDLLFromResourceIfNotExists;
 //procedure deleteMySQLClientDLLIfExists; //TODO UNLOAD DLL
@@ -86,7 +86,7 @@ begin
   inherited;
 end;
 
-constructor T_Connection.Create(mySQLCredentials: TMySQLCredentials);
+constructor T_Connection.Create(credentials: TCredentials);
 begin
   inherited Create(nil);
 
@@ -94,12 +94,12 @@ begin
   DriverName := 'MySQL';
   with Params do
   begin
-    Values['Server'] := mySQLCredentials.server;
-    Values['User_Name'] := mySQLCredentials.credentials.username;
-    Values['Password'] := mySQLCredentials.credentials.password;
-    Values['Port'] := IntToStr(mySQLCredentials.port);
-    Values['Database'] := mySQLCredentials.database;
-    if (mySQLCredentials.useSSL) then
+    Values['Server'] := credentials.server;
+    Values['User_Name'] := credentials.credentials.username;
+    Values['Password'] := credentials.credentials.password;
+    Values['Port'] := IntToStr(credentials.port);
+    Values['Database'] := credentials.database;
+    if (credentials.useSSL) then
     begin
       Values['UseSSL'] := 'True';
     end;
@@ -141,13 +141,13 @@ begin
   inherited;
 end;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function _getMySQLTConnection(credentials: TCredentials): T_Connection;
 var
   connection: T_Connection;
 begin
-  validateRequiredMySQLProperties(mySQLCredentials);
+  validateRequiredMySQLProperties(credentials);
   getMySQLClientDLLFromResourceIfNotExists;
-  connection := T_Connection.Create(mySQLCredentials);
+  connection := T_Connection.Create(credentials);
 
   Result := connection;
 end;

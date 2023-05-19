@@ -39,17 +39,17 @@ unit KLib.MySQL.Process;
 interface
 
 uses
-  KLib.MySQL.Info, KLib.VC_Redist,
-  KLib.Types, KLib.Constants;
+  KLib.MySQL.Credentials, KLib.MySQL.Info,
+  KLib.VC_Redist, KLib.Types, KLib.Constants;
 
 type
 
   TMySQLProcess = class
   private
     function checkIfMySQLIsStarted: boolean;
-    function getMySQLCredentials: TMySQLCredentials;
-    function getCredentials: TCredentials;
-    procedure setCredentials(value: TCredentials);
+    function getMySQLCredentials: KLib.MySQL.Credentials.TCredentials;
+    function getCredentials: KLib.Types.TCredentials;
+    procedure setCredentials(value: KLib.Types.TCredentials);
     function getPort: integer;
     procedure setPort(value: integer);
     procedure setFirstPortAvaliable(enable: boolean);
@@ -57,8 +57,8 @@ type
   public
     info: TMySQLInfo;
     property isStarted: boolean read checkIfMySQLIsStarted;
-    property mySQLCredentials: TMySQLCredentials read getMySQLCredentials;
-    property credentials: TCredentials read getCredentials write setCredentials;
+    property mySQLCredentials: KLib.MySQL.Credentials.TCredentials read getMySQLCredentials;
+    property credentials: KLib.Types.TCredentials read getCredentials write setCredentials;
     property port: integer read getPort write setPort;
     constructor create(mySQLInfo: TMySQLInfo);
     procedure start(autoGetFirstPortAvaliable: boolean = true);
@@ -78,7 +78,7 @@ constructor TMySQLProcess.create(mySQLInfo: TMySQLInfo);
 const
   ERR_MSG = 'MySQL version were not being specified.';
 var
-  _tempCredentials: TMySQLCredentials;
+  _tempCredentials: KLib.MySQL.Credentials.TCredentials;
 begin
   Self.info := mySQLInfo;
 
@@ -203,9 +203,9 @@ begin
   Result := _result;
 end;
 
-function TMySQLProcess.getMySQLCredentials: TMySQLCredentials;
+function TMySQLProcess.getMySQLCredentials: KLib.MySQL.Credentials.TCredentials;
 var
-  _mySQLCredentials: TMySQLCredentials;
+  _mySQLCredentials: KLib.MySQL.Credentials.TCredentials;
 begin
   with _mySQLCredentials do
   begin
@@ -217,14 +217,14 @@ begin
   Result := _mySQLCredentials;
 end;
 
-function TMySQLProcess.getCredentials: TCredentials;
+function TMySQLProcess.getCredentials: KLib.Types.TCredentials;
 begin
   Result := info.credentials.credentials;
 end;
 
-procedure TMySQLProcess.setCredentials(value: TCredentials);
+procedure TMySQLProcess.setCredentials(value: KLib.Types.TCredentials);
 var
-  _tempCredentials: TMySQLCredentials;
+  _tempCredentials: KLib.MySQL.Credentials.TCredentials;
 begin
   _tempCredentials := info.credentials;
   _tempCredentials.credentials := value;

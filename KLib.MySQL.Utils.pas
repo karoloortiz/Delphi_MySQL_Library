@@ -39,35 +39,35 @@ unit KLib.MySQL.Utils;
 interface
 
 uses
-  KLib.MySQL.Driver, KLib.MySQL.Info,
+  KLib.MySQL.Driver, KLib.MySQL.Credentials, KLib.MySQL.Info,
   KLib.Constants,
   System.Classes;
 
-function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean; overload;
+function checkIfMysqlVersionIs_v_8(credentials: TCredentials): boolean; overload;
 function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
-function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion; overload;
+function getMySQLVersion(credentials: TCredentials): TMySQLVersion; overload;
 function getMySQLVersion(connection: TConnection): TMySQLVersion; overload;
-function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string; overload;
+function getMySQLVersionAsString(credentials: TCredentials): string; overload;
 function getMySQLVersionAsString(connection: TConnection): string; overload;
-function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList; overload;
+function getNonStandardsDatabasesAsStringList(credentials: TCredentials): TStringList; overload;
 function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList; overload;
-function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string; overload;
+function getMySQLDataDir(credentials: TCredentials): string; overload;
 function getMySQLDataDir(connection: TConnection): string; overload;
-function getFirstFieldStringListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): TStringList; overload;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: TCredentials): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList; overload;
-function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
-function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant; overload;
+function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
-procedure flushPrivileges(mysqlCredentials: TMySQLCredentials); overload;
+procedure flushPrivileges(credentials: TCredentials); overload;
 procedure flushPrivileges(connection: TConnection); overload;
 
-procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
+procedure executeScript(sqlStatement: string; credentials: TCredentials); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection); overload;
-procedure executeQuery(sqlStatement: string; mysqlCredentials: TMySQLCredentials); overload;
+procedure executeQuery(sqlStatement: string; credentials: TCredentials); overload;
 procedure executeQuery(sqlStatement: string; connection: TConnection); overload;
 
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
@@ -76,8 +76,8 @@ function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
-function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
-function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
+function checkMySQLCredentials(credentials: TCredentials): boolean;
+function checkRequiredMySQLProperties(credentials: TCredentials): boolean;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
@@ -95,13 +95,13 @@ uses
   Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
-function checkIfMysqlVersionIs_v_8(mySQLCredentials: TMySQLCredentials): boolean;
+function checkIfMysqlVersionIs_v_8(credentials: TCredentials): boolean;
 var
   _result: boolean;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -126,13 +126,13 @@ begin
   Result := _result;
 end;
 
-function getMySQLVersion(mySQLCredentials: TMySQLCredentials): TMySQLVersion;
+function getMySQLVersion(credentials: TCredentials): TMySQLVersion;
 var
   version: TMySQLVersion;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -178,13 +178,13 @@ begin
   Result := version;
 end;
 
-function getMySQLVersionAsString(mySQLCredentials: TMySQLCredentials): string;
+function getMySQLVersionAsString(credentials: TCredentials): string;
 var
   version: string;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -208,13 +208,13 @@ begin
   Result := version;
 end;
 
-function getNonStandardsDatabasesAsStringList(mySQLCredentials: TMySQLCredentials): TStringList;
+function getNonStandardsDatabasesAsStringList(credentials: TCredentials): TStringList;
 var
   databases: TStringList;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -238,13 +238,13 @@ begin
   Result := databases;
 end;
 
-function getMySQLDataDir(mySQLCredentials: TMySQLCredentials): string;
+function getMySQLDataDir(credentials: TCredentials): string;
 var
   dataDir: string;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -268,13 +268,13 @@ begin
   Result := dataDir;
 end;
 
-function getFirstFieldStringListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): TStringList;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: TCredentials): TStringList;
 var
   fieldStringList: TStringList;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     fieldStringList := getFirstFieldStringListFromSQLStatement(sqlStatement, _connection);
@@ -297,13 +297,13 @@ begin
   Result := fieldStringList;
 end;
 
-function getFirstFieldListFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant;
 var
   fieldListResult: Variant;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     fieldListResult := getFirstFieldListFromSQLStatement(sqlStatement, _connection);
@@ -339,13 +339,13 @@ begin
   Result := fieldListResult;
 end;
 
-function getFirstFieldFromSQLStatement(sqlStatement: string; mysqlCredentials: TMySQLCredentials): Variant;
+function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant;
 var
   fieldResult: Variant;
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     fieldResult := getFirstFieldFromSQLStatement(sqlStatement, _connection);
@@ -390,11 +390,11 @@ begin
   executeQuery(_queryStmt, connection);
 end;
 
-procedure flushPrivileges(mysqlCredentials: TMySQLCredentials);
+procedure flushPrivileges(credentials: TCredentials);
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     flushPrivileges(_connection);
@@ -411,11 +411,11 @@ begin
   executeQuery(QUERY_STMT, connection);
 end;
 
-procedure executeScript(sqlStatement: string; mysqlCredentials: TMySQLCredentials);
+procedure executeScript(sqlStatement: string; credentials: TCredentials);
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     executeScript(sqlStatement, _connection);
@@ -464,11 +464,11 @@ begin
   end;
 end;
 
-procedure executeQuery(sqlStatement: string; mysqlCredentials: TMySQLCredentials);
+procedure executeQuery(sqlStatement: string; credentials: TCredentials);
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(mysqlCredentials);
+  _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     executeQuery(sqlStatement, _connection);
@@ -699,13 +699,13 @@ begin
   Result := sqlText;
 end;
 
-function checkMySQLCredentials(mySQLCredentials: TMySQLCredentials): boolean;
+function checkMySQLCredentials(credentials: TCredentials): boolean;
 var
   _result: boolean;
 
   _connection: TConnection;
 begin
-  _connection := getMySQLTConnection(mySQLCredentials);
+  _connection := getMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     _result := true;
@@ -721,11 +721,11 @@ begin
   Result := _result;
 end;
 
-function checkRequiredMySQLProperties(mySQLCredentials: TMySQLCredentials): boolean;
+function checkRequiredMySQLProperties(credentials: TCredentials): boolean;
 var
   _result: boolean;
 begin
-  with mySQLCredentials do
+  with credentials do
   begin
     _result := (server <> EMPTY_STRING) and (credentials.username <> EMPTY_STRING)
       and (credentials.password <> EMPTY_STRING) and (port <> 0);

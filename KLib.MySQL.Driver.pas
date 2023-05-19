@@ -61,7 +61,7 @@ uses
 {$ifend}
 {$ifend}
   //----------------------------------------------------------------------------
-  KLib.MySQL.Info,
+  KLib.MySQL.Info, KLib.MySQL.Credentials,
   System.Classes;
 
 type
@@ -92,11 +92,11 @@ type
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 
-function getTQuery(mySQLCredentials: TMySQLCredentials; sqlText: string = ''): TQuery; overload;
+function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery; overload;
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
-function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
-function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
+function getValidMySQLTConnection(credentials: TCredentials): TConnection;
+function getMySQLTConnection(credentials: TCredentials): TConnection;
 
 implementation
 
@@ -189,13 +189,13 @@ begin
   query.GotoBookmark(_bookmark);
 end;
 
-function getTQuery(mySQLCredentials: TMySQLCredentials; sqlText: string = ''): TQuery;
+function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery;
 var
   query: TQuery;
 
   _connection: TConnection;
 begin
-  _connection := getMySQLTConnection(mysqlCredentials);
+  _connection := getMySQLTConnection(credentials);
   try
     _connection.Connected := true;
     query := getTQuery(_connection, sqlText);
@@ -219,21 +219,21 @@ begin
   Result := query;
 end;
 
-function getValidMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
+function getValidMySQLTConnection(credentials: TCredentials): TConnection;
 var
   connection: TConnection;
 begin
-  validateMySQLCredentials(mySQLCredentials);
-  connection := getMySQLTConnection(mySQLCredentials);
+  validateMySQLCredentials(credentials);
+  connection := getMySQLTConnection(credentials);
 
   Result := connection;
 end;
 
-function getMySQLTConnection(mySQLCredentials: TMySQLCredentials): TConnection;
+function getMySQLTConnection(credentials: TCredentials): TConnection;
 var
   connection: T_Connection;
 begin
-  connection := _getMySQLTConnection(mySQLCredentials);
+  connection := _getMySQLTConnection(credentials);
 
   Result := TConnection(connection);
 end;

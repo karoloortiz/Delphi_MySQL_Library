@@ -39,39 +39,18 @@ unit KLib.MySQL.Info;
 interface
 
 uses
-  KLib.Types, KLib.Constants;
-
-type
-  TMySQLCredentials = record
-    credentials: TCredentials;
-    server: string;
-    port: integer;
-    database: string;
-    useSSL: boolean;
-    function getMySQLCliCredentialsParams: string;
-
-    procedure setDefault;
-  end;
-
-const
-  DEFAULT_MYSQL_CREDENTIALS: TMySQLCredentials = (
-    credentials: (username: 'root'; password: 'masterkey');
-    server: LOCALHOST_IP_ADDRESS;
-    port: 3306;
-    database: '';
-    useSSL: false;
-  );
+  KLib.MySQL.Credentials;
 
 type
   TMySQLVersion = (v5_5, v5_7, v_8);
 
   TMySQLInfo = record
   private
-    _credentials: TMySQLCredentials;
+    _credentials: TCredentials;
     _path_bin: string;
     _path_ini: string;
-    function getCredentials: TMySQLCredentials;
-    procedure setCredentials(value: TMySQLCredentials);
+    function getCredentials: TCredentials;
+    procedure setCredentials(value: TCredentials);
     function getPortIniFile: integer;
     procedure setPortIniFile(value: integer);
     function get_path_datadirIniFile: string;
@@ -86,7 +65,7 @@ type
   public
     version: TMySQLVersion;
     path_secure_file_priv: string;
-    property credentials: TMySQLCredentials read getCredentials write setCredentials;
+    property credentials: TCredentials read getCredentials write setCredentials;
     property portIniFile: integer read getPortIniFile write setPortIniFile;
     property path_datadirIniFile: string read get_path_datadirIniFile write set_path_datadirIniFile;
     property path_bin: string read _path_bin write set_path_bin;
@@ -112,21 +91,7 @@ const
   MYSQLDUMP_FILENAME = 'mysqldump.exe';
   MYSQLPUMP_FILENAME = 'mysqlpump.exe';
 
-function TMySQLCredentials.getMySQLCliCredentialsParams: string;
-begin
-  Result :=
-    '-u ' + credentials.username +
-    ' -p' + credentials.password +
-    ' -h ' + server +
-    ' --port ' + IntToStr(port);
-end;
-
-procedure TMySQLCredentials.setDefault;
-begin
-  self := DEFAULT_MYSQL_CREDENTIALS;
-end;
-
-function TMySQLInfo.getCredentials: TMySQLCredentials;
+function TMySQLInfo.getCredentials: TCredentials;
 begin
   try
     _credentials.port := portIniFile;
@@ -137,7 +102,7 @@ begin
   Result := _credentials;
 end;
 
-procedure TMySQLInfo.setCredentials(value: TMySQLCredentials);
+procedure TMySQLInfo.setCredentials(value: TCredentials);
 begin
   _credentials := value;
   if _credentials.server = '' then
@@ -207,7 +172,7 @@ end;
 procedure TMySQLInfo.setPortIniFile(value: integer);
 var
   _iniManipulator: TMySQLIniManipulator;
-  _tempCredentials: TMySQLCredentials;
+  _tempCredentials: TCredentials;
 begin
   validateThatStringIsNotEmpty(path_ini, ERR_MSG_INI_FILE_NOT_SPECIFIED);
   _iniManipulator := TMySQLIniManipulator.Create(path_ini);

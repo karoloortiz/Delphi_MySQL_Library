@@ -34,17 +34,34 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MySQL.Validate;
+unit KLib.MySQL.Credentials;
 
 interface
 
 uses
-  KLib.MySQL.Credentials;
+  KLib.Types, KLib.Constants;
 
-procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .');
-procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .');
-procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.');
-procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
+type
+  TCredentials = record
+    credentials: KLib.Types.TCredentials;
+    server: string;
+    port: integer;
+    database: string;
+    useSSL: boolean;
+    function getMySQLCliCredentialsParams: string;
+    function checkConnection: boolean;
+
+    procedure setDefault;
+  end;
+
+const
+  DEFAULT_MYSQL_CREDENTIALS: TCredentials = (
+    credentials: (username: 'root'; password: 'masterkey');
+    server: LOCALHOST_IP_ADDRESS;
+    port: 3306;
+    database: '';
+    useSSL: false;
+  );
 
 implementation
 
@@ -52,36 +69,23 @@ uses
   KLib.MySQL.Utils,
   System.SysUtils;
 
-procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .');
+function TCredentials.getMySQLCliCredentialsParams: string;
 begin
-  if not checkIfMysqlVersionIs_v_8(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
+  Result :=
+    '-u ' + credentials.username +
+    ' -p' + credentials.password +
+    ' -h ' + server +
+    ' --port ' + IntToStr(port);
 end;
 
-procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .');
+function TCredentials.checkConnection: boolean;
 begin
-  if checkIfMysqlVersionIs_v_8(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
+  Result := checkMySQLCredentials(Self);
 end;
 
-procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.');
+procedure TCredentials.setDefault;
 begin
-  if not checkMySQLCredentials(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
-end;
-
-procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
-begin
-  if not checkRequiredMySQLProperties(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
+  self := DEFAULT_MYSQL_CREDENTIALS;
 end;
 
 end.

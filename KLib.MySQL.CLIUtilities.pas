@@ -39,7 +39,7 @@ unit KLib.MySQL.CLIUtilities;
 interface
 
 uses
-  KLib.MySQL.Info,
+  KLib.MySQL.Credentials,
   KLib.Constants,
   System.Classes;
 
@@ -47,7 +47,7 @@ type
   TMysqldumpArgs = record
   public
     pathMysqldumpExe: string;
-    mySQLCredentials: TMySQLCredentials;
+    credentials: TCredentials;
     fileNameOut: string;
     skipTriggers: boolean;
     routines: boolean;
@@ -61,9 +61,9 @@ type
   end;
 
 procedure mysqldump(args: TMysqldumpArgs);
-procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
-procedure mysql_upgrade(pathMysql_upgrade: string; mySQLCredentials: TMySQLCredentials; force: boolean = FALSE);
-procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials;
+procedure importScript(pathMysqlCli: string; fileNameIn: string; credentials: TCredentials);
+procedure mysql_upgrade(pathMysql_upgrade: string; credentials: TCredentials; force: boolean = FALSE);
+procedure mysqladminShutdown(pathMysqladmin: string; credentials: TCredentials;
   force: boolean = NOT_FORCE);
 
 implementation
@@ -85,10 +85,10 @@ var
   _cmdParams: string;
 begin
   validateThatFileExists(args.pathMysqldumpExe);
-  validateMySQLCredentials(args.mySQLCredentials);
+  validateMySQLCredentials(args.credentials);
   if args.dumpAllNonStandardDatabases then
   begin
-    _databasesList := getNonStandardsDatabasesAsStringList(args.mySQLCredentials);
+    _databasesList := getNonStandardsDatabasesAsStringList(args.credentials);
   end
   else
   begin
@@ -102,7 +102,7 @@ begin
 
     with args do
     begin
-      _paramsMysqldump := mySQLCredentials.getMySQLCliCredentialsParams;
+      _paramsMysqldump := credentials.getMySQLCliCredentialsParams;
       _paramsMysqldump := _paramsMysqldump + ' --databases ' + _databases;
       if skipTriggers then
       begin
@@ -126,28 +126,28 @@ begin
   end;
 end;
 
-procedure importScript(pathMysqlCli: string; fileNameIn: string; mySQLCredentials: TMySQLCredentials);
+procedure importScript(pathMysqlCli: string; fileNameIn: string; credentials: TCredentials);
 var
   _paramsMysqlCli: string;
   _cmdParams: string;
 begin
   validateThatFileExists(fileNameIn);
   validateThatFileExists(pathMysqlCli);
-  validateMySQLCredentials(mySQLCredentials);
-  _paramsMysqlCli := mySQLCredentials.getMySQLCliCredentialsParams;
+  validateMySQLCredentials(credentials);
+  _paramsMysqlCli := credentials.getMySQLCliCredentialsParams;
   _paramsMysqlCli := _paramsMysqlCli + ' < ' + getDoubleQuotedString(fileNameIn);
   _cmdParams := '/K "' + getDoubleQuotedString(pathMysqlCli) + ' ' + _paramsMysqlCli + '"' + ' & EXIT';
   shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
 end;
 
-procedure mysql_upgrade(pathMysql_upgrade: string; mySQLCredentials: TMySQLCredentials; force: boolean = FALSE);
+procedure mysql_upgrade(pathMysql_upgrade: string; credentials: TCredentials; force: boolean = FALSE);
 var
   _paramsMysql_upgrade: string;
   _cmdParams: string;
 begin
   validateThatFileExists(pathMysql_upgrade);
-  validateMySQLCredentials(mySQLCredentials);
-  _paramsMysql_upgrade := mySQLCredentials.getMySQLCliCredentialsParams;
+  validateMySQLCredentials(credentials);
+  _paramsMysql_upgrade := credentials.getMySQLCliCredentialsParams;
   if force then
   begin
     _paramsMysql_upgrade := _paramsMysql_upgrade + ' --force';
@@ -156,7 +156,7 @@ begin
   shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
 end;
 
-procedure mysqladminShutdown(pathMysqladmin: string; mySQLCredentials: TMySQLCredentials;
+procedure mysqladminShutdown(pathMysqladmin: string; credentials: TCredentials;
   force: boolean = NOT_FORCE);
 var
   _paramsMysqladmin: string;
@@ -165,14 +165,14 @@ begin
   _mysqlIsShutDown := false;
   if force then
   begin
-    _mysqlIsShutDown := not checkMySQLCredentials(mySQLCredentials);
+    _mysqlIsShutDown := not checkMySQLCredentials(credentials);
   end;
 
   if (not _mysqlIsShutDown) then
   begin
     validateThatFileExists(pathMysqladmin);
-    validateMySQLCredentials(mySQLCredentials);
-    _paramsMysqladmin := mySQLCredentials.getMySQLCliCredentialsParams;
+    validateMySQLCredentials(credentials);
+    _paramsMysqladmin := credentials.getMySQLCliCredentialsParams;
     _paramsMysqladmin := _paramsMysqladmin + ' shutdown';
     shellExecuteExe(pathMysqladmin, _paramsMysqladmin, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
   end;
