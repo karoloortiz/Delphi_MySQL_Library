@@ -90,8 +90,6 @@ type
     destructor Destroy; override;
   end;
 
-procedure refreshQueryKeepingPosition(query: TQuery);
-
 function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery; overload;
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
@@ -177,16 +175,6 @@ end;
 destructor TConnection.Destroy;
 begin
   inherited;
-end;
-
-procedure refreshQueryKeepingPosition(query: TQuery);
-var
-  _bookmark: TBookmark;
-begin
-  _bookmark := Query.GetBookmark;
-  query.Close;
-  query.Open;
-  query.GotoBookmark(_bookmark);
 end;
 
 function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery;

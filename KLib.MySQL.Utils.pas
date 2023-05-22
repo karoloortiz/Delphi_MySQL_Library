@@ -70,6 +70,8 @@ procedure executeScript(scriptSQL: string; connection: TConnection); overload;
 procedure executeQuery(sqlStatement: string; credentials: TCredentials); overload;
 procedure executeQuery(sqlStatement: string; connection: TConnection); overload;
 
+procedure refreshQueryKeepingPosition(query: TQuery);
+
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 function getSQLStatementWithJoinStmtInsertedIfNotExists(sqlStatement: string; joinFieldStmt: string): string;
 function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt: string): string;
@@ -490,6 +492,16 @@ begin
       FreeAndNil(_query);
     end;
   end;
+end;
+
+procedure refreshQueryKeepingPosition(query: TQuery);
+var
+  _bookmark: TBookmark;
+begin
+  _bookmark := Query.GetBookmark;
+  query.Close;
+  query.Open;
+  query.GotoBookmark(_bookmark);
 end;
 
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
