@@ -605,9 +605,9 @@ begin
         ftString:
           sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftSmallint:
-          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+          sqlText.setParamAsInteger(_paramName, _paramValue);
         ftInteger:
-          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+          sqlText.setParamAsInteger(_paramName, _paramValue);
         ftWord:
           ;
         ftBoolean:
