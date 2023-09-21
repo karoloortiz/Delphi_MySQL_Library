@@ -99,8 +99,10 @@ function getMySQLTConnection(credentials: TCredentials): TConnection;
 implementation
 
 uses
-  KLib.MySQL.Validate, KLib.MySQL.Utils,
-  Data.DB;
+  KLib.MySQL.Validate, KLib.MySQL.Utils, KLib.MySQL.Resources,
+  Klib.Windows, KLib.Utils,
+  Data.DB,
+  System.SysUtils;
 
 function TConnection.checkIfMysqlVersionIs_v_8: boolean;
 begin
@@ -217,13 +219,29 @@ begin
   Result := connection;
 end;
 
+procedure getCaching_sha2_passwordDLLFromResourceIfNotExists(); forward;
+
 function getMySQLTConnection(credentials: TCredentials): TConnection;
 var
   connection: T_Connection;
 begin
+  getCaching_sha2_passwordDLLFromResourceIfNotExists();
   connection := _getMySQLTConnection(credentials);
 
   Result := TConnection(connection);
+end;
+
+procedure getCaching_sha2_passwordDLLFromResourceIfNotExists();
+const
+  FILENAME_DLL = 'caching_sha2_password.dll';
+var
+  _path_dll: string;
+begin
+  _path_dll := getCombinedPathWithCurrentDir(FILENAME_DLL);
+  if not FileExists(_path_dll) then
+  begin
+    getResourceAsFile(RESOURCE_CACHING_SHA2_PASSWORD, _path_dll);
+  end;
 end;
 
 end.

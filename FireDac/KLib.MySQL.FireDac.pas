@@ -67,7 +67,7 @@ type
 
 function _getMySQLTConnection(credentials: TCredentials): T_Connection;
 
-procedure getMySQLClientDLLFromResourceIfNotExists;
+procedure getMySQLClientDLLFromResourceIfNotExists();
 //procedure deleteMySQLClientDLLIfExists; //TODO UNLOAD DLL
 
 implementation
@@ -146,7 +146,7 @@ var
   connection: T_Connection;
 begin
   validateRequiredMySQLProperties(credentials);
-  getMySQLClientDLLFromResourceIfNotExists;
+  getMySQLClientDLLFromResourceIfNotExists();
   connection := T_Connection.Create(credentials);
 
   Result := connection;
@@ -156,7 +156,7 @@ const
   FILENAME_LIBMARIAB = 'libmariadb.dll';
   FILENAME_LIBMYSQL = 'libmysql.dll';
 
-procedure getMySQLClientDLLFromResourceIfNotExists;
+procedure getMySQLClientDLLFromResourceIfNotExists();
 var
   _path_dll: string;
 begin

@@ -34,60 +34,19 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MySQL.Credentials;
+unit KLib.MySQL.Resources;
 
 interface
 
+//##############################################################################
+//                      INCLUDE KLib.MySQL.Firedac.Assets.rc
+//##############################################################################
 uses
   KLib.Types, KLib.Constants;
 
-type
-  TCredentials = record
-    credentials: KLib.Types.TCredentials;
-    server: string;
-    port: integer;
-    database: string;
-    useSSL: boolean;
-    caching_sha2_password: boolean;
-    function getMySQLCliCredentialsParams: string;
-    function checkConnection: boolean;
-
-    procedure setDefault;
-  end;
-
 const
-  DEFAULT_MYSQL_CREDENTIALS: TCredentials = (
-    credentials: (username: 'root'; password: 'masterkey');
-    server: LOCALHOST_IP_ADDRESS;
-    port: 3306;
-    database: '';
-    useSSL: false;
-    caching_sha2_password: true;
-  );
+  RESOURCE_CACHING_SHA2_PASSWORD : TResource = (name: 'CACHING_SHA2_PASSWORD'; _type: DLL_TYPE);
 
 implementation
-
-uses
-  KLib.MySQL.Utils,
-  System.SysUtils;
-
-function TCredentials.getMySQLCliCredentialsParams: string;
-begin
-  Result :=
-    '-u ' + credentials.username +
-    ' -p' + credentials.password +
-    ' -h ' + server +
-    ' --port ' + IntToStr(port);
-end;
-
-function TCredentials.checkConnection: boolean;
-begin
-  Result := checkMySQLCredentials(Self);
-end;
-
-procedure TCredentials.setDefault;
-begin
-  self := DEFAULT_MYSQL_CREDENTIALS;
-end;
 
 end.
