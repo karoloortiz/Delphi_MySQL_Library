@@ -48,7 +48,7 @@ type
     port: integer;
     database: string;
     useSSL: boolean;
-    caching_sha2_password: boolean;
+    use_caching_sha2_password_dll: boolean;
     function getMySQLCliCredentialsParams: string;
     function checkConnection: boolean;
 
@@ -62,7 +62,7 @@ const
     port: 3306;
     database: '';
     useSSL: false;
-    caching_sha2_password: true;
+    use_caching_sha2_password_dll: true;
   );
 
 implementation

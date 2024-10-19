@@ -225,7 +225,10 @@ function getMySQLTConnection(credentials: TCredentials): TConnection;
 var
   connection: T_Connection;
 begin
-  getCaching_sha2_passwordDLLFromResourceIfNotExists();
+  if credentials.use_caching_sha2_password_dll then
+  begin
+    getCaching_sha2_passwordDLLFromResourceIfNotExists();
+  end;
   connection := _getMySQLTConnection(credentials);
 
   Result := TConnection(connection);
