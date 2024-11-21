@@ -65,10 +65,10 @@ procedure emptyTable(tableName: string; connection: TConnection);
 procedure flushPrivileges(credentials: TCredentials); overload;
 procedure flushPrivileges(connection: TConnection); overload;
 
-procedure executeScript(sqlStatement: string; credentials: TCredentials); overload;
-procedure executeScript(scriptSQL: string; connection: TConnection); overload;
-procedure executeQuery(sqlStatement: string; credentials: TCredentials); overload;
-procedure executeQuery(sqlStatement: string; connection: TConnection); overload;
+procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 
@@ -90,7 +90,7 @@ procedure cleanDataDir_v8(pathDataDir: string);
 implementation
 
 uses
-  KLib.Validate, KLib.MyString, KLib.Utils,
+  KLib.Validate, KLib.sqlstring, KLib.Utils,
 {$ifdef KLIB_MYSQL_FIREDAC}
   FireDAC.Stan.Param,
 {$ifend}
@@ -385,7 +385,7 @@ const
     'FROM' + sLineBreak +
     PARAM_TABLENAME;
 var
-  _queryStmt: myString;
+  _queryStmt: sqlstring;
 begin
   _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
   _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
@@ -413,21 +413,21 @@ begin
   executeQuery(QUERY_STMT, connection);
 end;
 
-procedure executeScript(sqlStatement: string; credentials: TCredentials);
+procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _connection: TConnection;
 begin
   _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
-    executeScript(sqlStatement, _connection);
+    executeScript(sqlStatement, _connection, isRaiseExceptionEnabled);
     _connection.Connected := false;
   finally
     FreeAndNil(_connection);
   end;
 end;
 
-procedure executeScript(scriptSQL: string; connection: TConnection);
+procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 const
   DEFAULT_DELIMITER = ';';
   DELIMITER_STMT = 'DELIMITER ';
@@ -448,7 +448,7 @@ begin
     _delimiterStartPosition := myAnsiPos(_delimiter, _scriptSQL, NOT_CASE_SENSITIVE);
     splitStrings(_scriptSQL, _delimiterStartPosition, Length(_delimiter), _currentQuery, _scriptSQL);
 
-    executeQuery(_currentQuery, connection);
+    executeQuery(_currentQuery, connection, isRaiseExceptionEnabled);
 
     _scriptSQL := _scriptSQL.TrimLeft;
     if _scriptSQL.StartsWith(DELIMITER_STMT, true) then
@@ -466,27 +466,37 @@ begin
   end;
 end;
 
-procedure executeQuery(sqlStatement: string; credentials: TCredentials);
+procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _connection: TConnection;
 begin
   _connection := getValidMySQLTConnection(credentials);
   try
     _connection.Connected := true;
-    executeQuery(sqlStatement, _connection);
+    executeQuery(sqlStatement, _connection, isRaiseExceptionEnabled);
     _connection.Connected := false;
   finally
     FreeAndNil(_connection);
   end;
 end;
 
-procedure executeQuery(sqlStatement: string; connection: TConnection);
+procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _query: TQuery;
 begin
   _query := getTQuery(connection, sqlStatement);
   try
-    _query.ExecSQL;
+    try
+      _query.ExecSQL;
+    except
+      on E: Exception do
+      begin
+        if isRaiseExceptionEnabled then
+        begin
+          raise Exception.Create('Execute query: ' + e.Message);
+        end;
+      end;
+    end;
   finally
     begin
       FreeAndNil(_query);
@@ -585,7 +595,7 @@ end;
 
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 var
-  sqlText: myString;
+  sqlText: sqlstring;
 
   i: integer;
   _paramName: string;
@@ -605,25 +615,25 @@ begin
         ftString:
           sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftSmallint:
-          sqlText.setParamAsInteger(_paramName, _paramValue);
+          sqlText.setParamByNameAsInteger(_paramName, _paramValue);
         ftInteger:
-          sqlText.setParamAsInteger(_paramName, _paramValue);
+          sqlText.setParamByNameAsInteger(_paramName, _paramValue);
         ftWord:
           ;
         ftBoolean:
           ;
         ftFloat:
-          sqlText.setParamAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+          sqlText.setParamByNameAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
         ftCurrency:
           ;
         ftBCD:
           ;
         ftDate:
-          sqlText.setParamAsDoubleQuotedDate(_paramName, _paramValue);
+          sqlText.setParamByNameAsDate(_paramName, _paramValue);
         ftTime:
-          sqlText.setParamAsDoubleQuotedDateTime(_paramName, _paramValue);
+          sqlText.setParamByNameAsDateTime(_paramName, _paramValue);
         ftDateTime:
-          sqlText.setParamAsDoubleQuotedDateTime(_paramName, _paramValue);
+          sqlText.setParamByNameAsDateTime(_paramName, _paramValue);
         ftBytes:
           ;
         ftVarBytes:

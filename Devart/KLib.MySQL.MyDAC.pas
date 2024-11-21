@@ -40,6 +40,7 @@ interface
 
 uses
   KLib.MySQL.Info,
+  KLib.MySQL.Credentials,
   MyAccess;
 
 type
@@ -54,13 +55,13 @@ type
     procedure _set_pooled(value: boolean);
   public
     property pooled: boolean read _get_pooled write _set_pooled;
-    constructor Create(mySQLCredentials: TMySQLCredentials); reintroduce; overload;
+    constructor Create(mySQLCredentials: TCredentials); reintroduce; overload;
   end;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function _getMySQLTConnection(mySQLCredentials: TCredentials): T_Connection;
 
-function getValidMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
-function getMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getValidMySQLTMyConnection(mySQLCredentials: TCredentials): TMyConnection;
+function getMySQLTMyConnection(mySQLCredentials: TCredentials): TMyConnection;
 
 implementation
 
@@ -72,7 +73,7 @@ begin
   inherited;
 end;
 
-constructor T_Connection.Create(mySQLCredentials: TMySQLCredentials);
+constructor T_Connection.Create(mySQLCredentials: TCredentials);
 begin
   inherited Create(nil);
   with Self do
@@ -95,7 +96,7 @@ begin
   Self.Pooling := value;
 end;
 
-function _getMySQLTConnection(mySQLCredentials: TMySQLCredentials): T_Connection;
+function _getMySQLTConnection(mySQLCredentials: TCredentials): T_Connection;
 var
   connection: T_Connection;
 
@@ -107,7 +108,7 @@ begin
   Result := connection;
 end;
 
-function getValidMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getValidMySQLTMyConnection(mySQLCredentials: TCredentials): TMyConnection;
 var
   connection: TMyConnection;
 begin
@@ -117,7 +118,7 @@ begin
   Result := connection;
 end;
 
-function getMySQLTMyConnection(mySQLCredentials: TMySQLCredentials): TMyConnection;
+function getMySQLTMyConnection(mySQLCredentials: TCredentials): TMyConnection;
 var
   connection: TMyConnection;
 begin

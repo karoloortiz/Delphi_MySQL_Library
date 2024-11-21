@@ -79,7 +79,7 @@ implementation
 uses
   KLib.MySQL.Utils,
   KLib.Asyncify, KLib.AsyncMethod,
-  KLib.MyString,
+  KLib.sqlstring,
   Vcl.Dialogs, Vcl.Controls,
   System.SysUtils, System.UITypes;
 
@@ -266,7 +266,7 @@ const
 var
   _result: boolean;
   _query: TQuery;
-  _queryStmt: myString;
+  _queryStmt: sqlstring;
   _user: string;
   _realNumberConnections: integer;
 

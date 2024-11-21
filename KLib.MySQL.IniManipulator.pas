@@ -64,7 +64,7 @@ type
     property datadir: string read getDatadir write setDatadir;
     property innodb_buffer_pool_size: string read get_innodb_buffer_pool_size write set_innodb_buffer_pool_size;
     property innodb_log_file_size: string read get_innodb_log_file_size write set_innodb_log_file_size;
-    procedure setOptimizedInnodbSettings(raiseExceptionIfMemoryIsInsufficient: boolean = false);
+    procedure setOptimizedInnodbSettings(isRaiseExceptionEnabledIfMemoryIsInsufficient: boolean = false);
     procedure setRequiredPathsInIni(path_datadir: string; path_secure_file_priv: string); overload;
     procedure setRequiredPathsInIni(path_datadir: string); overload;
     //TODO ADD procedure TUTF8NoBOMEncoding
@@ -166,7 +166,7 @@ begin
   WriteString(MYSQLD_SECTION_NAME, INNODB_LOG_FILE_SIZE_PROPERTY_NAME, value);
 end;
 
-procedure TMySQLIniManipulator.setOptimizedInnodbSettings(raiseExceptionIfMemoryIsInsufficient: boolean = false);
+procedure TMySQLIniManipulator.setOptimizedInnodbSettings(isRaiseExceptionEnabledIfMemoryIsInsufficient: boolean = false);
 const
   DEFAULT_INNODB_BUFFER_POOL_SIZE_PROPERTY = '8M';
   DEFAULT_INNODB_LOG_FILE_SIZE_PROPERTY = '48M';
@@ -195,7 +195,7 @@ begin
       end;
     0 .. 39:
       begin
-        if raiseExceptionIfMemoryIsInsufficient then
+        if isRaiseExceptionEnabledIfMemoryIsInsufficient then
         begin
           raise Exception.Create(ERR_MSG_INSUFFICENT_MEMORY);
         end;

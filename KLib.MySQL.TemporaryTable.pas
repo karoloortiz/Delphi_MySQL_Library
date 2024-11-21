@@ -51,7 +51,10 @@ type
     tableName: String;
     property createdStatus: boolean read _createdStatus;
 
-    constructor create(tableName: string; selectQueryStmt: string; connection: TConnection);
+    constructor create(tableName: string; selectQueryStmt: string; connection: TConnection); overload;
+    constructor create(connection: TConnection); overload;
+    procedure recreate(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+    procedure initialize(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
     procedure execute;
     procedure drop;
     destructor Destroy; override;
@@ -64,7 +67,7 @@ implementation
 
 uses
   KLib.MySQL.Utils,
-  KLib.MyString,
+  KLib.sqlstring,
   System.SysUtils;
 
 function getCreateTemporaryTableFromQuery_SQLStmt(tableName: string; queryStmt: string): string;
@@ -76,7 +79,7 @@ const
     PARAM_TABLENAME + sLineBreak +
     PARAM_QUERYSTMT;
 var
-  _queryStmt: myString;
+  _queryStmt: sqlstring;
 begin
   _queryStmt := CREATE_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME_PARAM_QUERYSTMT;
   _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
@@ -92,7 +95,7 @@ const
     'DROP TEMPORARY TABLE' + sLineBreak +
     PARAM_TABLENAME;
 var
-  _queryStmt: myString;
+  _queryStmt: sqlstring;
 begin
   _queryStmt := DROP_TEMPORANY_TABLE_WHERE_PARAM_TABLENAME;
   _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
@@ -102,9 +105,33 @@ end;
 
 constructor TTemporaryTable.create(tableName: string; selectQueryStmt: string; connection: TConnection);
 begin
-  self.tableName := tableName;
-  self._selectQueryStmt := selectQueryStmt;
-  self._connection := connection;
+  initialize(tableName, selectQueryStmt, connection);
+end;
+
+constructor TTemporaryTable.create(connection: TConnection);
+begin
+  if (connection <> nil) then
+  begin
+    Self._connection := connection;
+  end;
+  _createdStatus := false;
+end;
+
+procedure TTemporaryTable.recreate(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+begin
+  Self.drop;
+  initialize(tableName, selectQueryStmt, connection);
+  execute;
+end;
+
+procedure TTemporaryTable.initialize(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+begin
+  Self.tableName := tableName;
+  Self._selectQueryStmt := selectQueryStmt;
+  if (connection <> nil) then
+  begin
+    Self._connection := connection;
+  end;
   _createdStatus := false;
 end;
 
