@@ -39,7 +39,8 @@ unit KLib.MySQL.TemporaryTable;
 interface
 
 uses
-  KLib.MySQL.Driver;
+  KLib.MySQL.Driver,
+  KLib.Constants;
 
 type
   TTemporaryTable = class
@@ -51,10 +52,9 @@ type
     tableName: String;
     property createdStatus: boolean read _createdStatus;
 
-    constructor create(tableName: string; selectQueryStmt: string; connection: TConnection); overload;
-    constructor create(connection: TConnection); overload;
-    procedure recreate(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
-    procedure initialize(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+    constructor create(connection: TConnection; tableName: string = EMPTY_STRING; selectQueryStmt: string = EMPTY_STRING);
+    procedure recreate(selectQueryStmt: string; tableName: string = EMPTY_STRING; connection: TConnection = nil);
+    procedure initialize(tableName: string; connection: TConnection = nil; selectQueryStmt: string = EMPTY_STRING);
     procedure execute;
     procedure drop;
     destructor Destroy; override;
@@ -103,28 +103,27 @@ begin
   Result := _queryStmt;
 end;
 
-constructor TTemporaryTable.create(tableName: string; selectQueryStmt: string; connection: TConnection);
+constructor TTemporaryTable.create(connection: TConnection; tableName: string = EMPTY_STRING; selectQueryStmt: string = EMPTY_STRING);
 begin
-  initialize(tableName, selectQueryStmt, connection);
+  initialize(tableName, connection, selectQueryStmt);
 end;
 
-constructor TTemporaryTable.create(connection: TConnection);
-begin
-  if (connection <> nil) then
-  begin
-    Self._connection := connection;
-  end;
-  _createdStatus := false;
-end;
-
-procedure TTemporaryTable.recreate(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+procedure TTemporaryTable.recreate(selectQueryStmt: string; tableName: string = EMPTY_STRING; connection: TConnection = nil);
+var
+  _tableName: string;
 begin
   Self.drop;
-  initialize(tableName, selectQueryStmt, connection);
+
+  _tableName := tableName;
+  if (_tableName = EMPTY_STRING) then
+  begin
+    _tableName := Self.tableName;
+  end;
+  initialize(_tableName, connection, selectQueryStmt);
   execute;
 end;
 
-procedure TTemporaryTable.initialize(tableName: string; selectQueryStmt: string; connection: TConnection = nil);
+procedure TTemporaryTable.initialize(tableName: string; connection: TConnection = nil; selectQueryStmt: string = EMPTY_STRING);
 begin
   Self.tableName := tableName;
   Self._selectQueryStmt := selectQueryStmt;
