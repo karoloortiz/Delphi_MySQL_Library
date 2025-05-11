@@ -613,27 +613,27 @@ begin
         ftUnknown:
           ;
         ftString:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlText.paramByNameAsString(_paramName, _paramValue, false);
         ftSmallint:
-          sqlText.setParamByNameAsInteger(_paramName, _paramValue);
+          sqlText.paramByNameAsInteger(_paramName, _paramValue);
         ftInteger:
-          sqlText.setParamByNameAsInteger(_paramName, _paramValue);
+          sqlText.paramByNameAsInteger(_paramName, _paramValue);
         ftWord:
           ;
         ftBoolean:
           ;
         ftFloat:
-          sqlText.setParamByNameAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+          sqlText.paramByNameAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
         ftCurrency:
           ;
         ftBCD:
           ;
         ftDate:
-          sqlText.setParamByNameAsDate(_paramName, _paramValue);
+          sqlText.paramByNameAsDate(_paramName, _paramValue);
         ftTime:
-          sqlText.setParamByNameAsDateTime(_paramName, _paramValue);
+          sqlText.paramByNameAsDateTime(_paramName, _paramValue);
         ftDateTime:
-          sqlText.setParamByNameAsDateTime(_paramName, _paramValue);
+          sqlText.paramByNameAsDateTime(_paramName, _paramValue);
         ftBytes:
           ;
         ftVarBytes:
