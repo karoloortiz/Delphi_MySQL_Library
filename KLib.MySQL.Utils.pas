@@ -103,7 +103,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -134,7 +134,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -186,7 +186,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -216,7 +216,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -246,7 +246,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
 
@@ -276,7 +276,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     fieldStringList := getFirstFieldStringListFromSQLStatement(sqlStatement, _connection);
@@ -305,7 +305,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     fieldListResult := getFirstFieldListFromSQLStatement(sqlStatement, _connection);
@@ -326,14 +326,21 @@ var
 begin
   _query := getTQuery(connection, sqlStatement);
   try
-    _query.open;
-    fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
-    for i := 0 to _query.RecordCount - 1 do
-    begin
-      fieldListResult[i] := _query.FieldList.Fields[0].value;
-      _query.Next;
+    try
+      _query.open;
+      fieldListResult := VarArrayCreate([0, _query.RecordCount - 1], varVariant);
+      for i := 0 to _query.RecordCount - 1 do
+      begin
+        fieldListResult[i] := _query.FieldList.Fields[0].value;
+        _query.Next;
+      end;
+      _query.Close;
+    except
+      on E: Exception do
+      begin
+        raise Exception.Create('Error Klib.MySQL: ' + E.Message);
+      end;
     end;
-    _query.Close;
   finally
     FreeAndNil(_query);
   end;
@@ -347,7 +354,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     fieldResult := getFirstFieldFromSQLStatement(sqlStatement, _connection);
@@ -396,7 +403,7 @@ procedure flushPrivileges(credentials: TCredentials);
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     flushPrivileges(_connection);
@@ -417,7 +424,7 @@ procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaise
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     executeScript(sqlStatement, _connection, isRaiseExceptionEnabled);
@@ -470,7 +477,7 @@ procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseE
 var
   _connection: TConnection;
 begin
-  _connection := getValidMySQLTConnection(credentials);
+  _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
     executeQuery(sqlStatement, _connection, isRaiseExceptionEnabled);
@@ -613,7 +620,7 @@ begin
         ftUnknown:
           ;
         ftString:
-          sqlText.paramByNameAsString(_paramName, _paramValue, false);
+          sqlText.paramByNameAsString(_paramName, string(_paramValue), false);
         ftSmallint:
           sqlText.paramByNameAsInteger(_paramName, _paramValue);
         ftInteger:
@@ -727,7 +734,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getMySQLTConnection(credentials);
+  _connection := getTConnection(credentials);
   try
     _connection.Connected := true;
     _result := true;

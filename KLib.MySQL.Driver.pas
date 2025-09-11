@@ -44,7 +44,7 @@ interface
 //FOR FIREDAC
 //  KLIB_MYSQL_FIREDAC
 //FOR MYDAC
-//  KLIB_MYSQL_MYDAC
+//
 //##############################################################################
 {$ifndef KLIB_GLOBALS}
 {$include KLib.MySQL.inc}
@@ -73,28 +73,28 @@ type
 
   TConnection = class(T_Connection)
   public
-    function checkIfMysqlVersionIs_v_8: boolean; virtual;
-    function getMySQLVersion: TMySQLVersion; virtual;
-    function getMySQLVersionAsString: string; virtual;
-    function getNonStandardsDatabasesAsStringList: TStringList; virtual;
-    function getMySQLDataDir: string; virtual;
-    function getFirstFieldListFromSQLStatement(sqlStatement: string): Variant; virtual;
-    function getFirstFieldFromSQLStatement(sqlStatement: string): Variant; virtual;
+    function checkIfMysqlVersionIs_v_8: boolean;
+    function getMySQLVersion: TMySQLVersion;
+    function getMySQLVersionAsString: string;
+    function getNonStandardsDatabasesAsStringList: TStringList;
+    function getMySQLDataDir: string;
+    function getFirstFieldListFromSQLStatement(sqlStatement: string): Variant;
+    function getFirstFieldFromSQLStatement(sqlStatement: string): Variant;
 
-    procedure emptyTable(tableName: string); virtual;
+    procedure emptyTable(tableName: string);
 
-    procedure executeScript(scriptSQL: string); virtual;
-    procedure executeQuery(sqlStatement: string); virtual;
+    procedure executeScript(scriptSQL: string);
+    procedure executeQuery(sqlStatement: string);
 
-    function getACopyConnection: TConnection; virtual;
+    function getACopyConnection: TConnection;
     destructor Destroy; override;
   end;
 
 function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery; overload;
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
-function getValidMySQLTConnection(credentials: TCredentials): TConnection;
-function getMySQLTConnection(credentials: TCredentials): TConnection;
+function getValidTConnection(credentials: TCredentials): TConnection;
+function getTConnection(credentials: TCredentials): TConnection;
 
 implementation
 
@@ -185,7 +185,7 @@ var
 
   _connection: TConnection;
 begin
-  _connection := getMySQLTConnection(credentials);
+  _connection := getTConnection(credentials);
   try
     _connection.Connected := true;
     query := getTQuery(_connection, sqlText);
@@ -209,19 +209,19 @@ begin
   Result := query;
 end;
 
-function getValidMySQLTConnection(credentials: TCredentials): TConnection;
+function getValidTConnection(credentials: TCredentials): TConnection;
 var
   connection: TConnection;
 begin
   validateMySQLCredentials(credentials);
-  connection := getMySQLTConnection(credentials);
+  connection := getTConnection(credentials);
 
   Result := connection;
 end;
 
 procedure getCaching_sha2_passwordDLLFromResourceIfNotExists(); forward;
 
-function getMySQLTConnection(credentials: TCredentials): TConnection;
+function getTConnection(credentials: TCredentials): TConnection;
 var
   connection: T_Connection;
 begin
@@ -248,4 +248,3 @@ begin
 end;
 
 end.
-

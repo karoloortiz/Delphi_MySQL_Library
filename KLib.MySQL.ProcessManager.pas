@@ -87,7 +87,7 @@ constructor TMySQLProcessManager.create(info: TMySQLInfo; numberActiveConnection
   errMsg_startFailed: string = 'MySQL not started.'; confirmMsg_forceShutdown: string = 'Other programs are connected to the database, force MySQL shutdown?.');
 begin
   Self.mySQLProcess := TMySQLProcess.create(info);
-  Self.connection := getMySQLTConnection(mySQLProcess.info.credentials);
+  Self.connection := getTConnection(mySQLProcess.info.credentials);
 
   Self.numberActiveConnections := numberActiveConnections;
   Self.allPersonalConnectionsAreClosed := allPersonalConnectionsAreClosed;
