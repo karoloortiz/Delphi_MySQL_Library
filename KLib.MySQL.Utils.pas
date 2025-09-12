@@ -87,6 +87,36 @@ procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput
 procedure cleanDataDir_v5_7(pathDataDir: string);
 procedure cleanDataDir_v8(pathDataDir: string);
 
+type
+  TDumpOptions = record
+    includeData: Boolean;
+    includeStructure: Boolean;
+    includeDrop: Boolean;
+    includeIndexes: Boolean;
+    includeConstraints: Boolean;
+    includeTriggers: Boolean;
+    batchSize: Integer;
+    extendedInsert: Boolean;
+    completeInsert: Boolean;
+    disableKeys: Boolean;
+    whereClause: string;
+    lockTables: Boolean;
+  end;
+
+function createDefaultDumpOptions: TDumpOptions;
+function dumpTableToString(databaseName: string; tableName: string; connection: TConnection; options: TDumpOptions): string; overload;
+function dumpTableToString(databaseName: string; tableName: string; credentials: TCredentials; options: TDumpOptions): string; overload;
+function dumpTableToString(databaseName: string; tableName: string; connection: TConnection): string; overload;
+function dumpTableToString(databaseName: string; tableName: string; credentials: TCredentials): string; overload;
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; connection: TConnection; options: TDumpOptions); overload;
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; credentials: TCredentials; options: TDumpOptions); overload;
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; connection: TConnection); overload;
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; credentials: TCredentials); overload;
+procedure dumpTableToStream(databaseName: string; tableName: string; stream: TStream; connection: TConnection; options: TDumpOptions); overload;
+procedure dumpTableToStream(databaseName: string; tableName: string; stream: TStream; credentials: TCredentials; options: TDumpOptions); overload;
+procedure dumpDatabaseToFile(databaseName: string; filename: string; connection: TConnection; options: TDumpOptions); overload;
+procedure dumpDatabaseToFile(databaseName: string; filename: string; credentials: TCredentials; options: TDumpOptions); overload;
+
 implementation
 
 uses
@@ -798,6 +828,480 @@ begin
   deleteFileIfExists(_innodb_temp_path);
   _innodb_redo_path := getCombinedPath(pathDataDir, '#innodb_redo');
   createDirIfNotExists(_innodb_redo_path);
+end;
+
+function createDefaultDumpOptions: TDumpOptions;
+var
+  _options: TDumpOptions;
+begin
+  _options.includeData := true;
+  _options.includeStructure := true;
+  _options.includeDrop := true;
+  _options.includeIndexes := false;
+  _options.includeConstraints := false;
+  _options.includeTriggers := false;
+  _options.batchSize := 1000;
+  _options.extendedInsert := true;
+  _options.completeInsert := false;
+  _options.disableKeys := true;
+  _options.whereClause := EMPTY_STRING;
+  _options.lockTables := true;
+  
+  Result := _options;
+end;
+
+function dumpTableToString(databaseName: string; tableName: string; connection: TConnection; options: TDumpOptions): string;
+const
+  SQL_SHOW_CREATE_TABLE = 'SHOW CREATE TABLE :database.:table';
+  SQL_SELECT_DATA = 'SELECT * FROM :database.:table';
+  SQL_SHOW_INDEXES = 'SHOW INDEX FROM :database.:table WHERE Key_name != ''PRIMARY''';
+  SQL_SHOW_CONSTRAINTS = 'SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table AND REFERENCED_TABLE_NAME IS NOT NULL';
+  SQL_SHOW_TRIGGERS = 'SHOW TRIGGERS FROM :database WHERE `Table` = :table';
+var
+  _result: string;
+  _sqlStmt: sqlstring;
+  _query: TQuery;
+  _dumpLines: TStringList;
+  _insertStatement: string;
+  _fieldsCount: integer;
+  _fieldNames: TStringList;
+  i: integer;
+  _fieldValue: string;
+  _timestamp: string;
+  _batchCount: integer;
+  _valuesList: TStringList;
+begin
+  _dumpLines := TStringList.Create;
+  _fieldNames := TStringList.Create;
+  _valuesList := TStringList.Create;
+  try
+    _timestamp := FormatDateTime('yyyy-mm-dd hh:nn:ss', Now);
+    
+    _dumpLines.Add('-- MySQL dump generated on ' + _timestamp);
+    _dumpLines.Add('-- Database: ' + databaseName);
+    _dumpLines.Add('-- Table: ' + tableName);
+    _dumpLines.Add('');
+    
+    if options.includeStructure then
+    begin
+      if options.includeDrop then
+      begin
+        _dumpLines.Add('DROP TABLE IF EXISTS `' + tableName + '`;');
+        _dumpLines.Add('');
+      end;
+      
+      _sqlStmt := SQL_SHOW_CREATE_TABLE;
+      _sqlStmt.setParamAsString('database', databaseName);
+      _sqlStmt.setParamAsString('table', tableName);
+      
+      _query := getTQuery(connection, _sqlStmt);
+      try
+        _query.Open;
+        if not _query.IsEmpty then
+        begin
+          _dumpLines.Add('-- Table structure for ' + tableName);
+          _dumpLines.Add(_query.Fields[1].AsString + ';');
+          _dumpLines.Add('');
+        end;
+      finally
+        FreeAndNil(_query);
+      end;
+    end;
+
+    if options.includeData then
+    begin
+      _sqlStmt := SQL_SELECT_DATA;
+      _sqlStmt.setParamAsString('database', databaseName);
+      _sqlStmt.setParamAsString('table', tableName);
+      
+      if options.whereClause <> EMPTY_STRING then
+      begin
+        _sqlStmt := _sqlStmt + ' WHERE ' + options.whereClause;
+      end;
+      
+      _query := getTQuery(connection, _sqlStmt);
+      try
+        _query.Open;
+        if not _query.IsEmpty then
+        begin
+          _dumpLines.Add('-- Data for table ' + tableName);
+          
+          if options.lockTables then
+          begin
+            _dumpLines.Add('LOCK TABLES `' + tableName + '` WRITE;');
+          end;
+          
+          if options.disableKeys then
+          begin
+            _dumpLines.Add('ALTER TABLE `' + tableName + '` DISABLE KEYS;');
+          end;
+          
+          _fieldsCount := _query.FieldCount;
+          
+          if options.completeInsert then
+          begin
+            for i := 0 to _fieldsCount - 1 do
+            begin
+              _fieldNames.Add('`' + _query.Fields[i].FieldName + '`');
+            end;
+          end;
+
+          _batchCount := 0;
+          _valuesList.Clear;
+          
+          _query.First;
+          while not _query.Eof do
+          begin
+            _insertStatement := '(';
+            
+            for i := 0 to _fieldsCount - 1 do
+            begin
+              if _query.Fields[i].IsNull then
+              begin
+                _fieldValue := 'NULL';
+              end
+              else
+              begin
+                case _query.Fields[i].DataType of
+                  ftString, ftMemo, ftWideString, ftWideMemo:
+                    _fieldValue := QuotedStr(_query.Fields[i].AsString);
+                  ftDateTime, ftDate, ftTime:
+                    _fieldValue := QuotedStr(FormatDateTime('yyyy-mm-dd hh:nn:ss', _query.Fields[i].AsDateTime));
+                  ftBoolean:
+                    _fieldValue := IfThen(_query.Fields[i].AsBoolean, '1', '0');
+                  ftFloat, ftCurrency, ftBCD:
+                    _fieldValue := StringReplace(_query.Fields[i].AsString, ',', '.', []);
+                  ftBlob, ftBytes, ftVarBytes:
+                    if _query.Fields[i].IsNull then
+                      _fieldValue := 'NULL'
+                    else
+                      _fieldValue := QuotedStr(_query.Fields[i].AsString);
+                else
+                  _fieldValue := _query.Fields[i].AsString;
+                end;
+              end;
+              
+              if i < _fieldsCount - 1 then
+                _insertStatement := _insertStatement + _fieldValue + ','
+              else
+                _insertStatement := _insertStatement + _fieldValue;
+            end;
+            
+            _insertStatement := _insertStatement + ')';
+            
+            if options.extendedInsert and (options.batchSize > 1) then
+            begin
+              _valuesList.Add(_insertStatement);
+              _batchCount := _batchCount + 1;
+              
+              _query.Next;
+              
+              if (_batchCount >= options.batchSize) or _query.Eof then
+              begin
+                _insertStatement := 'INSERT INTO `' + tableName + '`';
+                if options.completeInsert then
+                begin
+                  _insertStatement := _insertStatement + ' (';
+                  for i := 0 to _fieldNames.Count - 1 do
+                  begin
+                    _insertStatement := _insertStatement + _fieldNames[i];
+                    if i < _fieldNames.Count - 1 then
+                      _insertStatement := _insertStatement + ',';
+                  end;
+                  _insertStatement := _insertStatement + ')';
+                end;
+                _insertStatement := _insertStatement + ' VALUES ';
+                for i := 0 to _valuesList.Count - 1 do
+                begin
+                  _insertStatement := _insertStatement + _valuesList[i];
+                  if i < _valuesList.Count - 1 then
+                    _insertStatement := _insertStatement + ',';
+                end;
+                _insertStatement := _insertStatement + ';';
+                _dumpLines.Add(_insertStatement);
+                
+                _valuesList.Clear;
+                _batchCount := 0;
+              end;
+            end
+            else
+            begin
+              _fieldValue := _insertStatement; // Save the values part (1,'data')
+              _insertStatement := 'INSERT INTO `' + tableName + '`';
+              if options.completeInsert then
+              begin
+                _insertStatement := _insertStatement + ' (';
+                for i := 0 to _fieldNames.Count - 1 do
+                begin
+                  _insertStatement := _insertStatement + _fieldNames[i];
+                  if i < _fieldNames.Count - 1 then
+                    _insertStatement := _insertStatement + ',';
+                end;
+                _insertStatement := _insertStatement + ')';
+              end;
+              _insertStatement := _insertStatement + ' VALUES ' + _fieldValue + ';';
+              _dumpLines.Add(_insertStatement);
+              _query.Next;
+            end;
+          end;
+          
+          if options.disableKeys then
+          begin
+            _dumpLines.Add('ALTER TABLE `' + tableName + '` ENABLE KEYS;');
+          end;
+          
+          if options.lockTables then
+          begin
+            _dumpLines.Add('UNLOCK TABLES;');
+          end;
+          
+          _dumpLines.Add('');
+        end;
+      finally
+        FreeAndNil(_query);
+      end;
+    end;
+    
+    if options.includeIndexes then
+    begin
+      _sqlStmt := SQL_SHOW_INDEXES;
+      _sqlStmt.setParamAsString('database', databaseName);
+      _sqlStmt.setParamAsString('table', tableName);
+      
+      _query := getTQuery(connection, _sqlStmt);
+      try
+        _query.Open;
+        if not _query.IsEmpty then
+        begin
+          _dumpLines.Add('-- Indexes for table ' + tableName);
+          _query.First;
+          while not _query.Eof do
+          begin
+            _dumpLines.Add('CREATE INDEX `' + _query.FieldByName('Key_name').AsString + '` ON `' + 
+              tableName + '` (`' + _query.FieldByName('Column_name').AsString + '`);');
+            _query.Next;
+          end;
+          _dumpLines.Add('');
+        end;
+      finally
+        FreeAndNil(_query);
+      end;
+    end;
+    
+    if options.includeConstraints then
+    begin
+      _sqlStmt := SQL_SHOW_CONSTRAINTS;
+      _sqlStmt.paramByNameAsString('schema', databaseName);
+      _sqlStmt.paramByNameAsString('table', tableName);
+      
+      _query := getTQuery(connection, _sqlStmt);
+      try
+        _query.Open;
+        if not _query.IsEmpty then
+        begin
+          _dumpLines.Add('-- Constraints for table ' + tableName);
+          _query.First;
+          while not _query.Eof do
+          begin
+            _dumpLines.Add('ALTER TABLE `' + _query.FieldByName('TABLE_NAME').AsString + 
+              '` ADD CONSTRAINT `' + _query.FieldByName('CONSTRAINT_NAME').AsString + 
+              '` FOREIGN KEY (`' + _query.FieldByName('COLUMN_NAME').AsString + 
+              '`) REFERENCES `' + _query.FieldByName('REFERENCED_TABLE_NAME').AsString + 
+              '` (`' + _query.FieldByName('REFERENCED_COLUMN_NAME').AsString + '`);');
+            _query.Next;
+          end;
+          _dumpLines.Add('');
+        end;
+      finally
+        FreeAndNil(_query);
+      end;
+    end;
+    
+    if options.includeTriggers then
+    begin
+      _sqlStmt := SQL_SHOW_TRIGGERS;
+      _sqlStmt.setParamAsString('database', databaseName);
+      _sqlStmt.setParamAsString('table', tableName);
+      
+      _query := getTQuery(connection, _sqlStmt);
+      try
+        _query.Open;
+        if not _query.IsEmpty then
+        begin
+          _dumpLines.Add('-- Triggers for table ' + tableName);
+          _query.First;
+          while not _query.Eof do
+          begin
+            _dumpLines.Add('DELIMITER $$');
+            _dumpLines.Add('CREATE TRIGGER `' + _query.FieldByName('Trigger').AsString + '` ' +
+              _query.FieldByName('Timing').AsString + ' ' + _query.FieldByName('Event').AsString +
+              ' ON `' + tableName + '` FOR EACH ROW BEGIN ' + _query.FieldByName('Statement').AsString + ' END$$');
+            _dumpLines.Add('DELIMITER ;');
+            _query.Next;
+          end;
+          _dumpLines.Add('');
+        end;
+      finally
+        FreeAndNil(_query);
+      end;
+    end;
+
+    _result := _dumpLines.Text;
+  finally
+    FreeAndNil(_dumpLines);
+    FreeAndNil(_fieldNames);
+    FreeAndNil(_valuesList);
+  end;
+  
+  Result := _result;
+end;
+
+function dumpTableToString(databaseName: string; tableName: string; credentials: TCredentials; options: TDumpOptions): string;
+var
+  _result: string;
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    _result := dumpTableToString(databaseName, tableName, _connection, options);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+  
+  Result := _result;
+end;
+
+function dumpTableToString(databaseName: string; tableName: string; connection: TConnection): string;
+var
+  _options: TDumpOptions;
+begin
+  _options := createDefaultDumpOptions;
+  Result := dumpTableToString(databaseName, tableName, connection, _options);
+end;
+
+function dumpTableToString(databaseName: string; tableName: string; credentials: TCredentials): string;
+var
+  _options: TDumpOptions;
+begin
+  _options := createDefaultDumpOptions;
+  Result := dumpTableToString(databaseName, tableName, credentials, _options);
+end;
+
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; connection: TConnection; options: TDumpOptions);
+var
+  _dumpContent: string;
+begin
+  _dumpContent := dumpTableToString(databaseName, tableName, connection, options);
+  saveToFile(_dumpContent, filename);
+end;
+
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; credentials: TCredentials; options: TDumpOptions);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    dumpTableToFile(databaseName, tableName, filename, _connection, options);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+end;
+
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; connection: TConnection);
+var
+  _options: TDumpOptions;
+begin
+  _options := createDefaultDumpOptions;
+  dumpTableToFile(databaseName, tableName, filename, connection, _options);
+end;
+
+procedure dumpTableToFile(databaseName: string; tableName: string; filename: string; credentials: TCredentials);
+var
+  _options: TDumpOptions;
+begin
+  _options := createDefaultDumpOptions;
+  dumpTableToFile(databaseName, tableName, filename, credentials, _options);
+end;
+
+procedure dumpTableToStream(databaseName: string; tableName: string; stream: TStream; connection: TConnection; options: TDumpOptions);
+var
+  _dumpContent: string;
+  _stringStream: TStringStream;
+begin
+  _dumpContent := dumpTableToString(databaseName, tableName, connection, options);
+  _stringStream := TStringStream.Create(_dumpContent, TEncoding.UTF8);
+  try
+    stream.CopyFrom(_stringStream, 0);
+  finally
+    FreeAndNil(_stringStream);
+  end;
+end;
+
+procedure dumpTableToStream(databaseName: string; tableName: string; stream: TStream; credentials: TCredentials; options: TDumpOptions);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    dumpTableToStream(databaseName, tableName, stream, _connection, options);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+end;
+
+procedure dumpDatabaseToFile(databaseName: string; filename: string; connection: TConnection; options: TDumpOptions);
+const
+  SQL_SHOW_TABLES = 'SHOW TABLES FROM :database';
+var
+  _sqlStmt: sqlstring;
+  _query: TQuery;
+  _allDumpContent: string;
+  _tableDumpContent: string;
+begin
+  _allDumpContent := '-- Full database dump for: ' + databaseName + sLineBreak;
+  _allDumpContent := _allDumpContent + '-- Generated on: ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + sLineBreak + sLineBreak;
+  
+  _sqlStmt := SQL_SHOW_TABLES;
+  _sqlStmt.setParamAsString('database', databaseName);
+  
+  _query := getTQuery(connection, _sqlStmt);
+  try
+    _query.Open;
+    if not _query.IsEmpty then
+    begin
+      _query.First;
+      while not _query.Eof do
+      begin
+        _tableDumpContent := dumpTableToString(databaseName, _query.Fields[0].AsString, connection, options);
+        _allDumpContent := _allDumpContent + _tableDumpContent + sLineBreak;
+        _query.Next;
+      end;
+    end;
+  finally
+    FreeAndNil(_query);
+  end;
+  
+  saveToFile(_allDumpContent, filename);
+end;
+
+procedure dumpDatabaseToFile(databaseName: string; filename: string; credentials: TCredentials; options: TDumpOptions);
+var
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    dumpDatabaseToFile(databaseName, filename, _connection, options);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
 end;
 
 end.
