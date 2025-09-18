@@ -101,9 +101,10 @@ type
     disableKeys: Boolean;
     whereClause: string;
     lockTables: Boolean;
+
+    procedure clear;
   end;
 
-function createDefaultDumpOptions: TDumpOptions;
 function dumpTable(connection: TConnection; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(connection: TConnection; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
@@ -830,31 +831,60 @@ begin
   createDirIfNotExists(_innodb_redo_path);
 end;
 
-function createDefaultDumpOptions: TDumpOptions;
+procedure TDumpOptions.clear;
+begin
+  Self.includeData := true;
+  Self.includeStructure := true;
+  Self.includeDrop := true;
+  Self.includeIndexes := false;
+  Self.includeConstraints := false;
+  Self.includeTriggers := false;
+  Self.batchSize := 1000;
+  Self.extendedInsert := true;
+  Self.completeInsert := false;
+  Self.disableKeys := true;
+  Self.whereClause := EMPTY_STRING;
+  Self.lockTables := true;
+end;
+
+function dumpTable(connection: TConnection; tableName: string; databaseName: string = EMPTY_STRING): string;
 var
   _options: TDumpOptions;
 begin
-  _options.includeData := true;
-  _options.includeStructure := true;
-  _options.includeDrop := true;
-  _options.includeIndexes := false;
-  _options.includeConstraints := false;
-  _options.includeTriggers := false;
-  _options.batchSize := 1000;
-  _options.extendedInsert := true;
-  _options.completeInsert := false;
-  _options.disableKeys := true;
-  _options.whereClause := EMPTY_STRING;
-  _options.lockTables := true;
+  _options.clear;
+  Result := dumpTable(connection, tableName, _options, databaseName);
+end;
 
-  Result := _options;
+function dumpTable(credentials: TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string;
+var
+  _options: TDumpOptions;
+begin
+  _options.clear;
+  Result := dumpTable(credentials, tableName, _options, databaseName);
+end;
+
+function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
+var
+  _result: string;
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    _result := dumpTable(_connection, tableName, options, databaseName);
+  finally
+    _connection.Connected := false;
+    FreeAndNil(_connection);
+  end;
+
+  Result := _result;
 end;
 
 function dumpTable(connection: TConnection; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
 const
   SQL_SHOW_CREATE_TABLE = 'SHOW CREATE TABLE :database.:table';
   SQL_SELECT_DATA = 'SELECT * FROM :database.:table';
-  SQL_SHOW_INDEXES = 'SHOW INDEX FROM :database.:table WHERE Key_name != ''PRIMARY''';
+  SQL_SHOW_INDEXES = 'SHOW INDEX FROM :database.:table WHERE Key_name != "PRIMARY"';
   SQL_SHOW_CONSTRAINTS = 'SELECT * FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table AND REFERENCED_TABLE_NAME IS NOT NULL';
   SQL_SHOW_TRIGGERS = 'SHOW TRIGGERS FROM :database WHERE `Table` = :table';
 var
@@ -880,12 +910,12 @@ begin
     if databaseName = EMPTY_STRING then
     begin
       _actualDatabaseName := connection.Database;
-      _qualifiedTableName := '`' + tableName + '`'; // Solo nome tabella
+      _qualifiedTableName := '`' + tableName + '`';
     end
     else
     begin
       _actualDatabaseName := databaseName;
-      _qualifiedTableName := '`' + databaseName + '`.`' + tableName + '`'; // Database.tabella
+      _qualifiedTableName := '`' + databaseName + '`.`' + tableName + '`';
     end;
 
     _timestamp := FormatDateTime('yyyy-mm-dd hh:nn:ss', Now);
@@ -917,7 +947,6 @@ begin
         begin
           _dumpLines.Add('-- Table structure for ' + tableName);
 
-          // Modifica CREATE TABLE per includere database qualifier se necessario
           _insertStatement := _query.Fields[1].AsString;
           if databaseName <> EMPTY_STRING then
           begin
@@ -1051,7 +1080,7 @@ begin
             end
             else
             begin
-              _fieldValue := _insertStatement; // Save the values part (1,'data')
+              _fieldValue := _insertStatement;
               _insertStatement := 'INSERT INTO ' + _qualifiedTableName;
               if options.completeInsert then
               begin
@@ -1181,39 +1210,6 @@ begin
   Result := _result;
 end;
 
-function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
-var
-  _result: string;
-  _connection: TConnection;
-begin
-  _connection := getValidTConnection(credentials);
-  try
-    _connection.Connected := true;
-    _result := dumpTable(_connection, tableName, options, databaseName);
-  finally
-    _connection.Connected := false;
-    FreeAndNil(_connection);
-  end;
-
-  Result := _result;
-end;
-
-function dumpTable(connection: TConnection; tableName: string; databaseName: string = EMPTY_STRING): string;
-var
-  _options: TDumpOptions;
-begin
-  _options := createDefaultDumpOptions;
-  Result := dumpTable(connection, tableName, _options, databaseName);
-end;
-
-function dumpTable(credentials: TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string;
-var
-  _options: TDumpOptions;
-begin
-  _options := createDefaultDumpOptions;
-  Result := dumpTable(credentials, tableName, _options, databaseName);
-end;
-
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
 var
   _dumpContent: string;
@@ -1240,7 +1236,7 @@ procedure dumpTableToFile(connection: TConnection; tableName: string; filename: 
 var
   _options: TDumpOptions;
 begin
-  _options := createDefaultDumpOptions;
+  _options.clear;
   dumpTableToFile(connection, tableName, filename, _options, databaseName);
 end;
 
@@ -1248,7 +1244,7 @@ procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename
 var
   _options: TDumpOptions;
 begin
-  _options := createDefaultDumpOptions;
+  _options.clear;
   dumpTableToFile(credentials, tableName, filename, _options, databaseName);
 end;
 
