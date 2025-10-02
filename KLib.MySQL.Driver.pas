@@ -62,12 +62,15 @@ uses
 {$ifend}
   //----------------------------------------------------------------------------
   KLib.MySQL.Info, KLib.MySQL.Credentials,
-  System.Classes;
+  KLib.Constants, KLib.Types,
+  System.Classes, System.SysUtils;
 
 type
   TQuery = class(T_Query)
   public
     procedure refreshKeepingPosition;
+    procedure exportToCsv(fileName: string); overload; virtual;
+    procedure exportToCsv(fileName: string; options: TCsvExportOptions); overload; virtual;
     destructor Destroy; override;
   end;
 
@@ -90,19 +93,18 @@ type
     destructor Destroy; override;
   end;
 
-function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery; overload;
+function getTQuery(credentials: KLib.MySQL.Credentials.TCredentials; sqlText: string = ''): TQuery; overload;
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
-function getValidTConnection(credentials: TCredentials): TConnection;
-function getTConnection(credentials: TCredentials): TConnection;
+function getValidTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConnection;
+function getTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConnection;
 
 implementation
 
 uses
   KLib.MySQL.Validate, KLib.MySQL.Utils, KLib.MySQL.Resources,
   Klib.Windows, KLib.Utils,
-  Data.DB,
-  System.SysUtils;
+  Data.DB;
 
 function TConnection.checkIfMysqlVersionIs_v_8: boolean;
 begin
@@ -169,6 +171,30 @@ begin
   refreshQueryKeepingPosition(Self);
 end;
 
+procedure TQuery.exportToCsv(fileName: string);
+const
+  ERR_MSG_QUERY_NOT_OPEN = 'Query must be opened before exporting to CSV';
+begin
+  if not Active then
+  begin
+    raise Exception.Create(ERR_MSG_QUERY_NOT_OPEN);
+  end;
+
+  exportDatasetToCSV(Self, fileName);
+end;
+
+procedure TQuery.exportToCsv(fileName: string; options: TCsvExportOptions);
+const
+  ERR_MSG_QUERY_NOT_OPEN = 'Query must be opened before exporting to CSV';
+begin
+  if not Active then
+  begin
+    raise Exception.Create(ERR_MSG_QUERY_NOT_OPEN);
+  end;
+
+  exportDatasetToCSV(Self, fileName, options);
+end;
+
 destructor TQuery.Destroy;
 begin
   inherited;
@@ -179,7 +205,7 @@ begin
   inherited;
 end;
 
-function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery;
+function getTQuery(credentials: KLib.MySQL.Credentials.TCredentials; sqlText: string = ''): TQuery;
 var
   query: TQuery;
 
@@ -209,7 +235,7 @@ begin
   Result := query;
 end;
 
-function getValidTConnection(credentials: TCredentials): TConnection;
+function getValidTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConnection;
 var
   connection: TConnection;
 begin
@@ -221,7 +247,7 @@ end;
 
 procedure getCaching_sha2_passwordDLLFromResourceIfNotExists(); forward;
 
-function getTConnection(credentials: TCredentials): TConnection;
+function getTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConnection;
 var
   connection: T_Connection;
 begin
