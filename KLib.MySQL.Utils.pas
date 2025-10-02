@@ -40,34 +40,39 @@ interface
 
 uses
   KLib.MySQL.Driver, KLib.MySQL.Credentials, KLib.MySQL.Info,
-  KLib.Constants,
+  KLib.Constants, KLib.Types,
   System.Classes;
 
-function checkIfMysqlVersionIs_v_8(credentials: TCredentials): boolean; overload;
+function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean; overload;
 function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
-function getMySQLVersion(credentials: TCredentials): TMySQLVersion; overload;
+function getMySQLVersion(credentials: KLib.MySQL.Credentials.TCredentials): TMySQLVersion; overload;
 function getMySQLVersion(connection: TConnection): TMySQLVersion; overload;
-function getMySQLVersionAsString(credentials: TCredentials): string; overload;
+function getMySQLVersionAsString(credentials: KLib.MySQL.Credentials.TCredentials): string; overload;
 function getMySQLVersionAsString(connection: TConnection): string; overload;
-function getNonStandardsDatabasesAsStringList(credentials: TCredentials): TStringList; overload;
+function getNonStandardsDatabasesAsStringList(credentials: KLib.MySQL.Credentials.TCredentials): TStringList; overload;
 function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList; overload;
-function getMySQLDataDir(credentials: TCredentials): string; overload;
+function getMySQLDataDir(credentials: KLib.MySQL.Credentials.TCredentials): string; overload;
 function getMySQLDataDir(connection: TConnection): string; overload;
-function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: TCredentials): TStringList; overload;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList; overload;
-function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
-function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
+function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
-procedure flushPrivileges(credentials: TCredentials); overload;
+procedure flushPrivileges(credentials: KLib.MySQL.Credentials.TCredentials); overload;
 procedure flushPrivileges(connection: TConnection); overload;
 
-procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure exportCSV(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; fileName: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure exportCSV(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+
+procedure executeScript(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeQuery(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
@@ -78,8 +83,8 @@ function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
-function checkMySQLCredentials(credentials: TCredentials): boolean;
-function checkRequiredMySQLProperties(credentials: TCredentials): boolean;
+function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
+function checkRequiredMySQLProperties(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
@@ -106,17 +111,17 @@ type
   end;
 
 function dumpTable(connection: TConnection; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
-function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
+function dumpTable(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(connection: TConnection; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
-function dumpTable(credentials: TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
+function dumpTable(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
-procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
+procedure dumpTableToFile(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
-procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
+procedure dumpTableToFile(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToStream(connection: TConnection; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
-procedure dumpTableToStream(credentials: TCredentials; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
+procedure dumpTableToStream(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
 procedure dumpDatabaseToFile(connection: TConnection; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
-procedure dumpDatabaseToFile(credentials: TCredentials; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
+procedure dumpDatabaseToFile(credentials: KLib.MySQL.Credentials.TCredentials; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
 
 implementation
 
@@ -128,7 +133,7 @@ uses
   Data.DB,
   System.SysUtils, System.StrUtils, System.Variants;
 
-function checkIfMysqlVersionIs_v_8(credentials: TCredentials): boolean;
+function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
   _result: boolean;
 
@@ -159,7 +164,7 @@ begin
   Result := _result;
 end;
 
-function getMySQLVersion(credentials: TCredentials): TMySQLVersion;
+function getMySQLVersion(credentials: KLib.MySQL.Credentials.TCredentials): TMySQLVersion;
 var
   version: TMySQLVersion;
 
@@ -211,7 +216,7 @@ begin
   Result := version;
 end;
 
-function getMySQLVersionAsString(credentials: TCredentials): string;
+function getMySQLVersionAsString(credentials: KLib.MySQL.Credentials.TCredentials): string;
 var
   version: string;
 
@@ -241,7 +246,7 @@ begin
   Result := version;
 end;
 
-function getNonStandardsDatabasesAsStringList(credentials: TCredentials): TStringList;
+function getNonStandardsDatabasesAsStringList(credentials: KLib.MySQL.Credentials.TCredentials): TStringList;
 var
   databases: TStringList;
 
@@ -271,7 +276,7 @@ begin
   Result := databases;
 end;
 
-function getMySQLDataDir(credentials: TCredentials): string;
+function getMySQLDataDir(credentials: KLib.MySQL.Credentials.TCredentials): string;
 var
   dataDir: string;
 
@@ -301,7 +306,8 @@ begin
   Result := dataDir;
 end;
 
-function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: TCredentials): TStringList;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials): TStringList;
 var
   fieldStringList: TStringList;
 
@@ -330,7 +336,8 @@ begin
   Result := fieldStringList;
 end;
 
-function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant;
+function getFirstFieldListFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials): Variant;
 var
   fieldListResult: Variant;
 
@@ -379,7 +386,8 @@ begin
   Result := fieldListResult;
 end;
 
-function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant;
+function getFirstFieldFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials): Variant;
 var
   fieldResult: Variant;
 
@@ -430,7 +438,7 @@ begin
   executeQuery(_queryStmt, connection);
 end;
 
-procedure flushPrivileges(credentials: TCredentials);
+procedure flushPrivileges(credentials: KLib.MySQL.Credentials.TCredentials);
 var
   _connection: TConnection;
 begin
@@ -451,7 +459,76 @@ begin
   executeQuery(QUERY_STMT, connection);
 end;
 
-procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure exportCSV(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; fileName: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+var
+  _csvExportoptions: TCsvExportOptions;
+begin
+  _csvExportoptions := TCsvExportOptions.getDefault;
+  exportCSV(sqlStatement, credentials, fileName, _csvExportoptions, isRaiseExceptionEnabled);
+end;
+
+procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+var
+  _csvExportoptions: TCsvExportOptions;
+begin
+  _csvExportoptions := TCsvExportOptions.getDefault;
+  exportCSV(sqlStatement, connection, fileName, _csvExportoptions, isRaiseExceptionEnabled);
+end;
+
+procedure exportCSV(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+var
+  _query: TQuery;
+begin
+  _query := getTQuery(credentials, sqlStatement);
+  try
+    try
+      _query.Open;
+      exportDatasetToCSV(_query, fileName, options);
+      _query.Close;
+    except
+      on E: Exception do
+      begin
+        if isRaiseExceptionEnabled then
+        begin
+          raise Exception.Create('Open query: ' + e.Message);
+        end;
+      end;
+    end;
+  finally
+    begin
+      FreeAndNil(_query);
+    end;
+  end;
+end;
+
+procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+var
+  _query: TQuery;
+begin
+  _query := getTQuery(connection, sqlStatement);
+  try
+    try
+      _query.Open;
+      exportDatasetToCSV(_query, fileName, options);
+      _query.Close;
+    except
+      on E: Exception do
+      begin
+        if isRaiseExceptionEnabled then
+        begin
+          raise Exception.Create('Open query: ' + e.Message);
+        end;
+      end;
+    end;
+  finally
+    begin
+      FreeAndNil(_query);
+    end;
+  end;
+end;
+
+procedure executeScript(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _connection: TConnection;
 begin
@@ -504,7 +581,8 @@ begin
   end;
 end;
 
-procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure executeQuery(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _connection: TConnection;
 begin
@@ -759,7 +837,7 @@ begin
   Result := sqlText;
 end;
 
-function checkMySQLCredentials(credentials: TCredentials): boolean;
+function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
   _result: boolean;
 
@@ -781,7 +859,7 @@ begin
   Result := _result;
 end;
 
-function checkRequiredMySQLProperties(credentials: TCredentials): boolean;
+function checkRequiredMySQLProperties(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
   _result: boolean;
 begin
@@ -855,7 +933,7 @@ begin
   Result := dumpTable(connection, tableName, _options, databaseName);
 end;
 
-function dumpTable(credentials: TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string;
+function dumpTable(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string;
 var
   _options: TDumpOptions;
 begin
@@ -863,7 +941,7 @@ begin
   Result := dumpTable(credentials, tableName, _options, databaseName);
 end;
 
-function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
+function dumpTable(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
 var
   _result: string;
   _connection: TConnection;
@@ -1218,7 +1296,7 @@ begin
   saveToFile(_dumpContent, filename);
 end;
 
-procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
+procedure dumpTableToFile(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
 var
   _connection: TConnection;
 begin
@@ -1240,7 +1318,7 @@ begin
   dumpTableToFile(connection, tableName, filename, _options, databaseName);
 end;
 
-procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; databaseName: string = EMPTY_STRING);
+procedure dumpTableToFile(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; filename: string; databaseName: string = EMPTY_STRING);
 var
   _options: TDumpOptions;
 begin
@@ -1262,7 +1340,7 @@ begin
   end;
 end;
 
-procedure dumpTableToStream(credentials: TCredentials; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING);
+procedure dumpTableToStream(credentials: KLib.MySQL.Credentials.TCredentials; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING);
 var
   _connection: TConnection;
 begin
@@ -1321,7 +1399,7 @@ begin
   saveToFile(_allDumpContent, filename);
 end;
 
-procedure dumpDatabaseToFile(credentials: TCredentials; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
+procedure dumpDatabaseToFile(credentials: KLib.MySQL.Credentials.TCredentials; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
 var
   _connection: TConnection;
 begin
