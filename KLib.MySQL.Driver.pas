@@ -90,16 +90,21 @@ type
     destructor Destroy; override;
   end;
 
+function getTQuery(connectionString: string; sqlText: string = ''): TQuery; overload;
 function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery; overload;
 function getTQuery(connection: TConnection; sqlText: string = ''): TQuery; overload;
 
-function getValidTConnection(credentials: TCredentials): TConnection;
-function getTConnection(credentials: TCredentials): TConnection;
+function getValidTConnection(connectionString: string): TConnection; overload;
+function getValidTConnection(credentials: TCredentials): TConnection; overload;
+
+function getTConnection(connectionString: string): TConnection; overload;
+function getTConnection(credentials: TCredentials): TConnection; overload;
 
 implementation
 
 uses
-  KLib.MySQL.Validate, KLib.MySQL.Utils, KLib.MySQL.Resources,
+  KLib.MySQL.Utils,
+  KLib.MySQL.Validate, KLib.MySQL.Resources,
   Klib.Windows, KLib.Utils,
   Data.DB,
   System.SysUtils;
@@ -179,6 +184,14 @@ begin
   inherited;
 end;
 
+function getTQuery(connectionString: string; sqlText: string = ''): TQuery;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getTQuery(_credentials, sqlText);
+end;
+
 function getTQuery(credentials: TCredentials; sqlText: string = ''): TQuery;
 var
   query: TQuery;
@@ -209,6 +222,14 @@ begin
   Result := query;
 end;
 
+function getValidTConnection(connectionString: string): TConnection;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getValidTConnection(_credentials);
+end;
+
 function getValidTConnection(credentials: TCredentials): TConnection;
 var
   connection: TConnection;
@@ -220,6 +241,14 @@ begin
 end;
 
 procedure getCaching_sha2_passwordDLLFromResourceIfNotExists(); forward;
+
+function getTConnection(connectionString: string): TConnection;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getTConnection(_credentials);
+end;
 
 function getTConnection(credentials: TCredentials): TConnection;
 var

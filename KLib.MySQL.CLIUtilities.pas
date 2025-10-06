@@ -61,10 +61,14 @@ type
   end;
 
 procedure mysqldump(args: TMysqldumpArgs);
-procedure importScript(pathMysqlCli: string; fileNameIn: string; credentials: TCredentials);
-procedure mysql_upgrade(pathMysql_upgrade: string; credentials: TCredentials; force: boolean = FALSE);
+procedure importScript(pathMysqlCli: string; fileNameIn: string; credentials: TCredentials); overload;
+procedure importScript(pathMysqlCli: string; fileNameIn: string; connectionString: string); overload;
+procedure mysql_upgrade(pathMysql_upgrade: string; credentials: TCredentials; force: boolean = FALSE); overload;
+procedure mysql_upgrade(pathMysql_upgrade: string; connectionString: string; force: boolean = FALSE); overload;
 procedure mysqladminShutdown(pathMysqladmin: string; credentials: TCredentials;
-  force: boolean = NOT_FORCE);
+  force: boolean = NOT_FORCE); overload;
+procedure mysqladminShutdown(pathMysqladmin: string; connectionString: string;
+  force: boolean = NOT_FORCE); overload;
 
 implementation
 
@@ -176,6 +180,30 @@ begin
     _paramsMysqladmin := _paramsMysqladmin + ' shutdown';
     shellExecuteExe(pathMysqladmin, _paramsMysqladmin, SHOW_WINDOW_HIDE, RAISE_EXCEPTION_IF_FUNCTION_FAILS);
   end;
+end;
+
+procedure importScript(pathMysqlCli: string; fileNameIn: string; connectionString: string);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  importScript(pathMysqlCli, fileNameIn, _credentials);
+end;
+
+procedure mysql_upgrade(pathMysql_upgrade: string; connectionString: string; force: boolean = FALSE);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  mysql_upgrade(pathMysql_upgrade, _credentials, force);
+end;
+
+procedure mysqladminShutdown(pathMysqladmin: string; connectionString: string; force: boolean = NOT_FORCE);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  mysqladminShutdown(pathMysqladmin, _credentials, force);
 end;
 
 procedure TMysqldumpArgs.clear;

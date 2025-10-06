@@ -43,30 +43,41 @@ uses
   KLib.Constants,
   System.Classes;
 
+function checkIfMysqlVersionIs_v_8(connectionString: string): boolean; overload;
 function checkIfMysqlVersionIs_v_8(credentials: TCredentials): boolean; overload;
 function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
+function getMySQLVersion(connectionString: string): TMySQLVersion; overload;
 function getMySQLVersion(credentials: TCredentials): TMySQLVersion; overload;
 function getMySQLVersion(connection: TConnection): TMySQLVersion; overload;
+function getMySQLVersionAsString(connectionString: string): string; overload;
 function getMySQLVersionAsString(credentials: TCredentials): string; overload;
 function getMySQLVersionAsString(connection: TConnection): string; overload;
+function getNonStandardsDatabasesAsStringList(connectionString: string): TStringList; overload;
 function getNonStandardsDatabasesAsStringList(credentials: TCredentials): TStringList; overload;
 function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringList; overload;
+function getMySQLDataDir(connectionString: string): string; overload;
 function getMySQLDataDir(credentials: TCredentials): string; overload;
 function getMySQLDataDir(connection: TConnection): string; overload;
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connectionString: string): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: TCredentials): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList; overload;
+function getFirstFieldListFromSQLStatement(sqlStatement: string; connectionString: string): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
+function getFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: TCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
 procedure emptyTable(tableName: string; connection: TConnection);
 
+procedure flushPrivileges(connectionString: string); overload;
 procedure flushPrivileges(credentials: TCredentials); overload;
 procedure flushPrivileges(connection: TConnection); overload;
 
+procedure executeScript(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeQuery(sqlStatement: string; credentials: TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 
@@ -78,8 +89,12 @@ function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
-function checkMySQLCredentials(credentials: TCredentials): boolean;
+function checkMySQLCredentials(connectionString: string): boolean; overload;
+function checkMySQLCredentials(credentials: TCredentials): boolean; overload;
 function checkRequiredMySQLProperties(credentials: TCredentials): boolean;
+
+function parseConnectionStringToCredentials(connectionString: string): TCredentials;
+function parseJDBCConnectionString(connectionString: string): TCredentials;
 
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 procedure remove_NO_AUTO_CREATE_USER_inDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
@@ -104,12 +119,16 @@ type
   end;
 
 function createDefaultDumpOptions: TDumpOptions;
+function dumpTable(connectionString: string; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(connection: TConnection; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(credentials: TCredentials; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string; overload;
+function dumpTable(connectionString: string; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(connection: TConnection; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
 function dumpTable(credentials: TCredentials; tableName: string; databaseName: string = EMPTY_STRING): string; overload;
+procedure dumpTableToFile(connectionString: string; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
+procedure dumpTableToFile(connectionString: string; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToFile(credentials: TCredentials; tableName: string; filename: string; databaseName: string = EMPTY_STRING); overload;
 procedure dumpTableToStream(connection: TConnection; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING); overload;
@@ -793,6 +812,187 @@ begin
   Result := _result;
 end;
 
+function parseConnectionStringToCredentials(connectionString: string): TCredentials;
+var
+  _result: TCredentials;
+  _pairs: TStringList;
+  _pair: TStringList;
+  _key, _value: string;
+  _connectionString: string;
+  i: integer;
+begin
+  _result.setDefault;
+  _connectionString := connectionString;
+
+  // Check if it's a JDBC-style connection string
+  if _connectionString.StartsWith('jdbc:mysql://', true) or
+    _connectionString.StartsWith('mysql://', true) then
+  begin
+    Result := parseJDBCConnectionString(_connectionString);
+    Exit;
+  end;
+
+  _pairs := TStringList.Create;
+  _pair := TStringList.Create;
+  try
+    _pairs.Delimiter := ';';
+    _pairs.StrictDelimiter := true;
+    _pairs.DelimitedText := _connectionString;
+
+    for i := 0 to _pairs.Count - 1 do
+    begin
+      _pair.Clear;
+      _pair.Delimiter := '=';
+      _pair.StrictDelimiter := true;
+      _pair.DelimitedText := _pairs[i];
+
+      if _pair.Count = 2 then
+      begin
+        _key := LowerCase(Trim(_pair[0]));
+        _value := Trim(_pair[1]);
+
+        // Remove quotes if present
+        if (_value.Length > 1) and
+          ((_value.StartsWith('"') and _value.EndsWith('"')) or
+          (_value.StartsWith('''') and _value.EndsWith(''''))) then
+        begin
+          _value := _value.Substring(1, _value.Length - 2);
+        end;
+
+        if (_key = 'server') or (_key = 'host') or (_key = 'data source') or (_key = 'datasource') then
+          _result.server := _value
+        else if (_key = 'port') then
+          _result.port := StrToIntDef(_value, 3306)
+        else if (_key = 'database') or (_key = 'initial catalog') or (_key = 'initialcatalog') then
+          _result.database := _value
+        else if (_key = 'user id') or (_key = 'userid') or (_key = 'uid') or (_key = 'user') or (_key = 'username') then
+          _result.credentials.username := _value
+        else if (_key = 'password') or (_key = 'pwd') then
+          _result.credentials.password := _value
+        else if (_key = 'ssl mode') or (_key = 'sslmode') then
+          _result.useSSL := (LowerCase(_value) = 'required') or (LowerCase(_value) = 'preferred') or (LowerCase(_value) = 'true')
+        else if (_key = 'allow user variables') or (_key = 'allowuservariables') then
+          // Ignore - compatibility parameter
+        else if (_key = 'charset') or (_key = 'character set') or (_key = 'characterset') then
+          // Ignore - compatibility parameter
+        else if (_key = 'connect timeout') or (_key = 'connecttimeout') or (_key = 'connection timeout') or (_key = 'connectiontimeout') then
+          // Ignore - compatibility parameter
+        else if (_key = 'default command timeout') or (_key = 'defaultcommandtimeout') then
+          // Ignore - compatibility parameter
+        else if (_key = 'pooling') then
+          // Ignore - compatibility parameter
+        else if (_key = 'min pool size') or (_key = 'minpoolsize') then
+          // Ignore - compatibility parameter
+        else if (_key = 'max pool size') or (_key = 'maxpoolsize') then
+          // Ignore - compatibility parameter
+        else if (_key = 'use_caching_sha2_password_dll') then
+          _result.use_caching_sha2_password_dll := (LowerCase(_value) = 'true') or (_value = '1');
+      end;
+    end;
+  finally
+    FreeAndNil(_pairs);
+    FreeAndNil(_pair);
+  end;
+
+  Result := _result;
+end;
+
+function checkMySQLCredentials(connectionString: string): boolean;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := checkMySQLCredentials(_credentials);
+end;
+
+procedure flushPrivileges(connectionString: string);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  flushPrivileges(_credentials);
+end;
+
+procedure executeScript(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  executeScript(sqlStatement, _credentials, isRaiseExceptionEnabled);
+end;
+
+procedure executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  executeQuery(sqlStatement, _credentials, isRaiseExceptionEnabled);
+end;
+
+function getFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string): Variant;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getFirstFieldFromSQLStatement(sqlStatement, _credentials);
+end;
+
+function getFirstFieldListFromSQLStatement(sqlStatement: string; connectionString: string): Variant;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getFirstFieldListFromSQLStatement(sqlStatement, _credentials);
+end;
+
+function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connectionString: string): TStringList;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getFirstFieldStringListFromSQLStatement(sqlStatement, _credentials);
+end;
+
+function getMySQLDataDir(connectionString: string): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getMySQLDataDir(_credentials);
+end;
+
+function getNonStandardsDatabasesAsStringList(connectionString: string): TStringList;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getNonStandardsDatabasesAsStringList(_credentials);
+end;
+
+function getMySQLVersionAsString(connectionString: string): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getMySQLVersionAsString(_credentials);
+end;
+
+function getMySQLVersion(connectionString: string): TMySQLVersion;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getMySQLVersion(_credentials);
+end;
+
+function checkIfMysqlVersionIs_v_8(connectionString: string): boolean;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := checkIfMysqlVersionIs_v_8(_credentials);
+end;
+
 procedure MyISAMToInnoDBInDumpFile(filename: string; filenameOutput: string = EMPTY_STRING);
 begin
   replaceTextInFile('ENGINE=MyISAM', 'ENGINE=InnoDB', filename, filenameOutput);
@@ -1214,6 +1414,22 @@ begin
   Result := dumpTable(credentials, tableName, _options, databaseName);
 end;
 
+function dumpTable(connectionString: string; tableName: string; options: TDumpOptions; databaseName: string = EMPTY_STRING): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := dumpTable(_credentials, tableName, options, databaseName);
+end;
+
+function dumpTable(connectionString: string; tableName: string; databaseName: string = EMPTY_STRING): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := dumpTable(_credentials, tableName, databaseName);
+end;
+
 procedure dumpTableToFile(connection: TConnection; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
 var
   _dumpContent: string;
@@ -1250,6 +1466,22 @@ var
 begin
   _options := createDefaultDumpOptions;
   dumpTableToFile(credentials, tableName, filename, _options, databaseName);
+end;
+
+procedure dumpTableToFile(connectionString: string; tableName: string; filename: string; options: TDumpOptions; databaseName: string = EMPTY_STRING);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  dumpTableToFile(_credentials, tableName, filename, options, databaseName);
+end;
+
+procedure dumpTableToFile(connectionString: string; tableName: string; filename: string; databaseName: string = EMPTY_STRING);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  dumpTableToFile(_credentials, tableName, filename, databaseName);
 end;
 
 procedure dumpTableToStream(connection: TConnection; tableName: string; stream: TStream; options: TDumpOptions; databaseName: string = EMPTY_STRING);
@@ -1337,6 +1569,109 @@ begin
     _connection.Connected := false;
     FreeAndNil(_connection);
   end;
+end;
+
+function parseJDBCConnectionString(connectionString: string): TCredentials;
+var
+  _result: TCredentials;
+  _url: string;
+  _queryParams: string;
+  _hostPort: string;
+  _database: string;
+  _pairs: TStringList;
+  _pair: TStringList;
+  _key, _value: string;
+  _colonPos: integer;
+  _questionPos: integer;
+  _slashPos: integer;
+  i: integer;
+begin
+  _result.setDefault;
+  _url := connectionString;
+
+  // Remove jdbc: prefix if present
+  if _url.StartsWith('jdbc:', true) then
+    _url := _url.Substring(5);
+
+  // Remove mysql:// prefix
+  if _url.StartsWith('mysql://', true) then
+    _url := _url.Substring(8)
+  else if _url.StartsWith('//', true) then
+    _url := _url.Substring(2);
+
+  // Split URL and query parameters
+  _questionPos := _url.IndexOf('?');
+  if _questionPos > 0 then
+  begin
+    _queryParams := _url.Substring(_questionPos + 1);
+    _url := _url.Substring(0, _questionPos);
+  end
+  else
+    _queryParams := '';
+
+  // Parse host:port/database
+  _slashPos := _url.IndexOf('/');
+  if _slashPos > 0 then
+  begin
+    _hostPort := _url.Substring(0, _slashPos);
+    _database := _url.Substring(_slashPos + 1);
+    _result.database := _database;
+  end
+  else
+    _hostPort := _url;
+
+  // Parse host and port
+  _colonPos := _hostPort.LastIndexOf(':');
+  if _colonPos > 0 then
+  begin
+    _result.server := _hostPort.Substring(0, _colonPos);
+    _result.port := StrToIntDef(_hostPort.Substring(_colonPos + 1), 3306);
+  end
+  else
+  begin
+    _result.server := _hostPort;
+    _result.port := 3306;
+  end;
+
+  // Parse query parameters
+  if _queryParams <> '' then
+  begin
+    _pairs := TStringList.Create;
+    _pair := TStringList.Create;
+    try
+      _pairs.Delimiter := '&';
+      _pairs.StrictDelimiter := true;
+      _pairs.DelimitedText := _queryParams;
+
+      for i := 0 to _pairs.Count - 1 do
+      begin
+        _pair.Clear;
+        _pair.Delimiter := '=';
+        _pair.StrictDelimiter := true;
+        _pair.DelimitedText := _pairs[i];
+
+        if _pair.Count = 2 then
+        begin
+          _key := LowerCase(Trim(_pair[0]));
+          _value := Trim(_pair[1]);
+
+          if (_key = 'user') or (_key = 'username') then
+            _result.credentials.username := _value
+          else if (_key = 'password') or (_key = 'passwd') then
+            _result.credentials.password := _value
+          else if (_key = 'usessl') or (_key = 'ssl') then
+            _result.useSSL := (LowerCase(_value) = 'true') or (_value = '1')
+          else if (_key = 'use_caching_sha2_password_dll') then
+            _result.use_caching_sha2_password_dll := (LowerCase(_value) = 'true') or (_value = '1');
+        end;
+      end;
+    finally
+      FreeAndNil(_pairs);
+      FreeAndNil(_pair);
+    end;
+  end;
+
+  Result := _result;
 end;
 
 end.

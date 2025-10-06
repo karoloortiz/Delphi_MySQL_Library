@@ -41,9 +41,12 @@ interface
 uses
   KLib.MySQL.Credentials;
 
-procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .');
-procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .');
-procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.');
+procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .'); overload;
+procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.0 .'); overload;
+procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .'); overload;
+procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.0 .'); overload;
+procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.'); overload;
+procedure validateMySQLCredentials(connectionString: string; errMsg: string = 'Invalid MySQL credentials.'); overload;
 procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
 
 implementation
@@ -82,6 +85,30 @@ begin
   begin
     raise Exception.Create(errMsg);
   end;
+end;
+
+procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.0 .');
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  validateThatMysqlVersionIs_v_8(_credentials, errMsg);
+end;
+
+procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.0 .');
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  validateThatMysqlVersionIsNot_v_8(_credentials, errMsg);
+end;
+
+procedure validateMySQLCredentials(connectionString: string; errMsg: string = 'Invalid MySQL credentials.');
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  validateMySQLCredentials(_credentials, errMsg);
 end;
 
 end.
