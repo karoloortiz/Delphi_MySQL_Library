@@ -53,9 +53,13 @@ type
   private
     function _get_pooled: boolean;
     procedure _set_pooled(value: boolean);
+    function _get_isAutoReconnectEnabled: boolean;
+    procedure _set_isAutoReconnectEnabled(value: boolean);
   public
     property pooled: boolean read _get_pooled write _set_pooled;
+    property isAutoReconnectEnabled: boolean read _get_isAutoReconnectEnabled write _set_isAutoReconnectEnabled;
     constructor Create(mySQLCredentials: TCredentials); reintroduce; overload;
+      destructor Destroy; override;
   end;
 
 function _getMySQLTConnection(mySQLCredentials: TCredentials): T_Connection;
@@ -94,6 +98,21 @@ end;
 procedure T_Connection._set_pooled(value: boolean);
 begin
   Self.Pooling := value;
+end;
+
+function T_Connection._get_isAutoReconnectEnabled: boolean;
+begin
+  Result := Self.Options.LocalFailover;
+end;
+
+procedure T_Connection._set_isAutoReconnectEnabled(value: boolean);
+begin
+  Self.Options.LocalFailover := value;
+end;
+
+destructor T_Connection.Destroy;
+begin
+  inherited;
 end;
 
 function _getMySQLTConnection(mySQLCredentials: TCredentials): T_Connection;

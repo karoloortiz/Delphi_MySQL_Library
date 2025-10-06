@@ -56,11 +56,13 @@ type
     procedure _set_port(value: integer);
     function _get_pooled: boolean;
     procedure _set_pooled(value: boolean);
+    function _get_isAutoReconnectEnabled: boolean;
+    procedure _set_isAutoReconnectEnabled(value: boolean);
   public
     property database: string read _get_database write _set_database;
     property port: integer read _get_port write _set_port;
     property pooled: boolean read _get_pooled write _set_pooled;
-
+    property isAutoReconnectEnabled: boolean read _get_isAutoReconnectEnabled write _set_isAutoReconnectEnabled;
     constructor Create(credentials: TCredentials); reintroduce; overload;
     destructor Destroy; override;
   end;
@@ -134,6 +136,16 @@ end;
 procedure T_Connection._set_pooled(value: boolean);
 begin
   TFDPhysMySQLConnectionDefParams(ResultConnectionDef.Params).Pooled := value;
+end;
+
+function T_Connection._get_isAutoReconnectEnabled: boolean;
+begin
+  Result := Self.ResourceOptions.AutoReconnect;
+end;
+
+procedure T_Connection._set_isAutoReconnectEnabled(value: boolean);
+begin
+  Self.ResourceOptions.AutoReconnect := value;
 end;
 
 destructor T_Connection.Destroy;
