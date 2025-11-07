@@ -68,6 +68,9 @@ function getFirstFieldFromSQLStatement(sqlStatement: string; connectionString: s
 function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
+function getRecordCountFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): integer; overload;
+function getRecordCountFromSQLStatement(sqlStatement: string; connection: TConnection): integer; overload;
+
 procedure emptyTable(tableName: string; connection: TConnection);
 
 procedure flushPrivileges(connectionString: string); overload;
@@ -440,6 +443,43 @@ begin
   end;
 
   Result := fieldResult;
+end;
+
+function getRecordCountFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials): integer;
+var
+  recordCount: integer;
+
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    recordCount := getRecordCountFromSQLStatement(sqlStatement, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := recordCount;
+end;
+
+function getRecordCountFromSQLStatement(sqlStatement: string; connection: TConnection): integer;
+var
+  recordCount: integer;
+
+  _query: TQuery;
+begin
+  _query := getTQuery(connection, sqlStatement);
+  try
+    _query.open;
+    recordCount := _query.recordCount;
+    _query.Close;
+  finally
+    FreeAndNil(_query);
+  end;
+
+  Result := recordCount;
 end;
 
 procedure emptyTable(tableName: string; connection: TConnection);
