@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -106,10 +106,9 @@ function getTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConn
 implementation
 
 uses
-  KLib.MySQL.Utils,
-  KLib.MySQL.Validate, KLib.MySQL.Resources,
-  Klib.Windows, KLib.Utils,
-  Data.DB;
+  Data.DB,
+  Klib.Windows, KLib.Utils, KLib.Csv, KLib.FileSystem,
+  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.Resources;
 
 function TConnection.checkIfMysqlVersionIs_v_8: boolean;
 begin

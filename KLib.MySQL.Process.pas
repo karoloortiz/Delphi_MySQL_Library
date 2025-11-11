@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -69,10 +69,10 @@ type
 implementation
 
 uses
-  KLib.MySQL.Utils, KLib.MySQL.CLIUtilities, KLib.MySQL.Validate,
-  KLib.Utils, KLib.Validate, KLib.Windows,
+  System.SysUtils, System.UITypes,
   Vcl.Dialogs, Vcl.Controls,
-  System.SysUtils, System.UITypes;
+  KLib.Utils, KLib.Validate, KLib.Windows, KLib.StringUtils,
+  KLib.MySQL.Utils, KLib.MySQL.CLIUtilities, KLib.MySQL.Validate;
 
 constructor TMySQLProcess.create(mySQLInfo: TMySQLInfo);
 const

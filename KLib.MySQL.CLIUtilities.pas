@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -73,9 +73,9 @@ procedure mysqladminShutdown(pathMysqladmin: string; connectionString: string;
 implementation
 
 uses
-  KLib.MySQL.Utils, KLib.MySQL.Validate,
-  KLib.Windows, KLib.Validate, KLib.Utils,
-  System.SysUtils;
+  System.SysUtils,
+  KLib.Windows, KLib.Validate, KLib.Utils, KLib.StringUtils,
+  KLib.MySQL.Utils, KLib.MySQL.Validate;
 
 const
   SHOW_WINDOW_HIDE = _SW_HIDE;

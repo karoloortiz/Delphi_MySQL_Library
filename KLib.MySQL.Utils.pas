@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -148,12 +148,13 @@ procedure dumpDatabaseToFile(credentials: KLib.MySQL.Credentials.TCredentials; f
 implementation
 
 uses
-  KLib.Validate, KLib.sqlstring, KLib.Utils,
+  System.SysUtils, System.StrUtils, System.Variants,
+  Data.DB,
 {$ifdef KLIB_MYSQL_FIREDAC}
   FireDAC.Stan.Param,
 {$ifend}
-  Data.DB,
-  System.SysUtils, System.StrUtils, System.Variants;
+  KLib.Validate, KLib.sqlstring, KLib.Utils, KLib.StringUtils, KLib.Csv,
+  KLib.FileSystem;
 
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var

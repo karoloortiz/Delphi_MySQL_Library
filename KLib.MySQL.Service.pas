@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -87,10 +87,10 @@ type
 implementation
 
 uses
-  KLib.MySQL.CLIUtilities, KLib.MySQL.Utils,
+  System.SysUtils,
   KLib.WindowsService, KLib.Windows, KLib.Constants, KLib.Utils, KLib.Validate,
-  Klib.Asyncify,
-  System.SysUtils;
+  Klib.Asyncify, KLib.StringUtils,
+  KLib.MySQL.CLIUtilities, KLib.MySQL.Utils;
 
 constructor TMySQLService.Create(nameService: string; mySQLInfo: TMySQLInfo);
 begin

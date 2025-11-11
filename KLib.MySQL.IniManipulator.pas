@@ -1,5 +1,5 @@
 {
-  KLib Version = 3.0
+  KLib Version = 4.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -73,8 +73,9 @@ type
 implementation
 
 uses
-  KLib.Utils, KLib.MemoryRAM, KLib.Windows, KLib.Validate,
-  System.IOUtils, System.SysUtils;
+  System.IOUtils, System.SysUtils,
+  KLib.Utils, KLib.MemoryRAM, KLib.Windows, KLib.Validate, KLib.FileSystem,
+  KLib.StringUtils;
 
 const
   CLIENT_SECTION_NAME = 'client';

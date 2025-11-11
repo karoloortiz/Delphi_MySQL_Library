@@ -1,6 +1,6 @@
 # Delphi_MySQL_Library
 
-KLib Version = 3.0
+KLib Version = 4.0
 
 A library with some useful MySQL Utilities for your Delphi.
 
