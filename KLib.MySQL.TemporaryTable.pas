@@ -51,20 +51,18 @@ type
     _isCreated: boolean;
 
     procedure initialize(tableName: string; connection: TConnection = nil; selectQueryStmt: string = EMPTY_STRING);
+    function getMySQLTypeFromRttiType(rttiType: TRttiType): string;
+    function getValueAsString(value: TValue; fieldType: TRttiType): string;
+    function getCreateTableFromTypeInfo_SQLStmt(typeInfo: PTypeInfo): string;
+    procedure insertDataBatch(data: TArray<TValue>; batchSize: integer);
 
-    //    function getCreateTemporaryTableStatement<T>(const tableName: string): string;
-
-    class function getSQL<T>(const myRecord: T): string;
-
-    class function processRecord(Instance: Pointer; TypeInfo: PTypeInfo): string;
-    class function processClass(ClassInstance: TObject; ClassType: TRttiInstanceType): string;
   public
     tableName: String;
     property isCreated: boolean read _isCreated;
 
     constructor create(connection: TConnection; tableName: string = EMPTY_STRING; selectQueryStmt: string = EMPTY_STRING);
-    procedure recreate(selectQueryStmt: string; tableName: string = EMPTY_STRING; connection: TConnection = nil);
-    //    procedure recreate<T>(data: Array of T; tableName: string = EMPTY_STRING; connection: TConnection = nil); overload;
+    procedure recreate(selectQueryStmt: string; tableName: string = EMPTY_STRING; connection: TConnection = nil); overload;
+    procedure recreate<T>(data: TArray<T>; tableName: string = EMPTY_STRING; connection: TConnection = nil); overload;
     procedure execute;
     procedure drop;
     destructor Destroy; override;
@@ -76,296 +74,10 @@ function getDropTemporaryTable_SQLStmt(const tableName: string): string;
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.StrUtils, System.Variants, System.Classes,
   KLib.sqlstring, KLib.Validate, KLib.Utils, KLib.Generics.Attributes,
-  KLib.StringUtils,
+  KLib.StringUtils, KLib.DateTimeUtils,
   KLib.MySQL.Utils;
-
-class function TTemporaryTable.getSQL<T>(const myRecord: T): string;
-var
-  Ctx: TRttiContext;
-  RttiType: TRttiType;
-  Value: TValue;
-  ObjInstance: TObject;
-begin
-  RttiType := Ctx.GetType(TypeInfo(T));
-
-  TValue.Make(@myRecord, TypeInfo(T), Value);
-
-  if RttiType.TypeKind = tkClass then
-  begin
-    ObjInstance := Value.AsObject;
-    if ObjInstance = nil then
-    begin
-      raise Exception.Create('Object nil');
-    end
-    else
-    begin
-      Result := processClass(ObjInstance, RttiType as TRttiInstanceType);
-    end;
-  end
-  else if RttiType.TypeKind = tkRecord then
-  begin
-    Result := processRecord(@myRecord, TypeInfo(T));
-  end
-  else
-  begin
-    raise Exception.Create('Type must be a class or record');
-  end;
-end;
-
-class function TTemporaryTable.processRecord(Instance: Pointer; TypeInfo: PTypeInfo): string;
-begin
-
-end;
-
-class function TTemporaryTable.processClass(ClassInstance: TObject; ClassType: TRttiInstanceType): string;
-var
-  Field: TRttiField;
-  Prop: TRttiProperty;
-  FieldValue: TValue;
-  FieldName: string;
-  _customName: string;
-  _minAttributeValue: double;
-  _maxAttributeValue: double;
-  _isRequiredAttribute: boolean;
-  _isDefaultAttribute: boolean;
-  _errorMessage: string;
-  _fieldOffset: Integer;
-begin
-  //  Result := '';
-  //
-  //  _isRequiredAttribute := false;
-  //  try
-  //    if ClassInstance = nil then
-  //    begin
-  //      Exit;
-  //    end;
-  //
-  //    for Field in ClassType.GetFields do
-  //    begin
-  //      if Field.Visibility in [mvPublic, mvPublished] then
-  //      begin
-  //        if Field.GetAttribute<IgnoreAttribute> <> nil then
-  //          Continue;
-  //
-  //        _customName := Field.Name;
-  //        if Field.GetAttribute<CustomNameAttribute> <> nil then
-  //        begin
-  //          _customName := Field.GetAttribute<CustomNameAttribute>.Value;
-  //        end;
-  //
-  //        try
-  //          _fieldOffset := Field.Offset;
-  //
-  //          if (_fieldOffset < 0) or (_fieldOffset > 100000) then
-  //          begin
-  //            //Result.AddPair(_customName, TJSONNull.Create);   todo
-  //            Continue;
-  //          end;
-  //
-  //          try
-  //            if Field.FieldType.Name.StartsWith('TDictionary<') then
-  //            begin
-  //              // todo adds call to KLib.Generics.JSON
-  //            end
-  //            else
-  //            begin
-  //              FieldValue := Field.GetValue(ClassInstance);
-  //            end;
-  //          except
-  //            on E: EAccessViolation do
-  //            begin
-  //              if Field.FieldType.TypeKind = tkClass then
-  //              begin
-  //                if not AIgnoreEmpty then
-  //                  Result.AddPair(_customName, TJSONNull.Create);
-  //                Continue;
-  //              end
-  //              else
-  //              begin
-  //                try
-  //                  FieldValue := getDefaultTValue(Field);
-  //                except
-  //                  Continue;
-  //                end;
-  //              end;
-  //            end;
-  //            on E: Exception do
-  //            begin
-  //              if Field.FieldType.TypeKind = tkClass then
-  //              begin
-  //                if not AIgnoreEmpty then
-  //                  Result.AddPair(_customName, TJSONNull.Create);
-  //                Continue;
-  //              end
-  //              else
-  //                raise;
-  //            end;
-  //          end;
-  //
-  //          _isRequiredAttribute := Field.GetAttribute<RequiredAttribute> <> nil;
-  //          _isDefaultAttribute := Field.GetAttribute<DefaultValueAttribute> <> nil;
-  //
-  //          if (Field.FieldType.TypeKind = tkClass) then
-  //          begin
-  //            if FieldValue.IsEmpty or (FieldValue.AsObject = nil) then
-  //            begin
-  //              if _isRequiredAttribute and not _isDefaultAttribute then
-  //              begin
-  //                raise Exception.Create('Field required: ' + _customName);
-  //              end;
-  //              if AIgnoreEmpty then
-  //                Continue
-  //              else
-  //                Result.AddPair(_customName, TJSONNull.Create);
-  //              Continue;
-  //            end;
-  //          end;
-  //
-  //          if (checkIfTValueIsEmpty(FieldValue)) and (Field.FieldType.TypeKind <> tkClass) then
-  //          begin
-  //            if (_isRequiredAttribute) and (not _isDefaultAttribute) then
-  //            begin
-  //              raise Exception.Create('Field required: ' + _customName);
-  //            end;
-  //            FieldValue := getDefaultTValue(Field);
-  //          end;
-  //
-  //          // Apply min/max attributes
-  //          _minAttributeValue := -1;
-  //          if (Field.GetAttribute<MinAttribute> <> nil) then
-  //            _minAttributeValue := Field.GetAttribute<MinAttribute>.Value;
-  //
-  //          _maxAttributeValue := -1;
-  //          if (Field.GetAttribute<MaxAttribute> <> nil) then
-  //            _maxAttributeValue := Field.GetAttribute<MaxAttribute>.Value;
-  //
-  //          // Skip empty values if needed
-  //          if (AIgnoreEmpty and checkIfTValueIsEmpty(FieldValue)
-  //            and (Field.FieldType.TypeKind <> tkRecord)
-  //            and (Field.FieldType.TypeKind <> tkClass)) then
-  //            Continue;
-  //
-  //          JSONElement := getJSONFromTValue(FieldValue, AIgnoreEmpty, _minAttributeValue, _maxAttributeValue);
-  //
-  //          if (JSONElement <> nil) then
-  //          begin
-  //            Result.AddPair(_customName, JSONElement);
-  //          end;
-  //        except
-  //          on E: EAccessViolation do
-  //          begin
-  //            if not AIgnoreEmpty then
-  //              Result.AddPair(_customName, TJSONNull.Create);
-  //          end;
-  //          on E: Exception do
-  //          begin
-  //            _errorMessage := Format('JSON process error in field "%s": %s',
-  //              [Field.Name, E.Message]);
-  //            raise Exception.Create(_errorMessage);
-  //          end;
-  //        end;
-  //      end;
-  //    end;
-  //
-  //    for Prop in ClassType.GetProperties do
-  //    begin
-  //      if (Prop.Visibility in [mvPublic, mvPublished]) and Prop.IsReadable then
-  //      begin
-  //        if Prop.GetAttribute<IgnoreAttribute> <> nil then
-  //          Continue;
-  //
-  //        _customName := Prop.Name;
-  //        if Prop.GetAttribute<CustomNameAttribute> <> nil then
-  //          _customName := Prop.GetAttribute<CustomNameAttribute>.Value;
-  //
-  //        if Result.FindValue(_customName) <> nil then
-  //          Continue;
-  //
-  //        try
-  //          try
-  //            FieldValue := Prop.GetValue(ClassInstance);
-  //          except
-  //            on E: EAccessViolation do
-  //            begin
-  //              if Prop.PropertyType.TypeKind = tkClass then
-  //              begin
-  //                if not AIgnoreEmpty then
-  //                  Result.AddPair(_customName, TJSONNull.Create);
-  //              end;
-  //              Continue;
-  //            end;
-  //            on E: Exception do
-  //            begin
-  //              Continue;
-  //            end;
-  //          end;
-  //
-  //          _isRequiredAttribute := Prop.GetAttribute<RequiredAttribute> <> nil;
-  //          _isDefaultAttribute := Prop.GetAttribute<DefaultValueAttribute> <> nil;
-  //
-  //          if (Prop.PropertyType.TypeKind = tkClass) then
-  //          begin
-  //            if FieldValue.IsEmpty or (FieldValue.AsObject = nil) then
-  //            begin
-  //              if _isRequiredAttribute and not _isDefaultAttribute then
-  //                raise Exception.Create('Property required: ' + _customName);
-  //
-  //              if AIgnoreEmpty then
-  //                Continue
-  //              else
-  //                Result.AddPair(_customName, TJSONNull.Create);
-  //              Continue;
-  //            end;
-  //          end;
-  //
-  //          if (checkIfTValueIsEmpty(FieldValue)) and (Prop.PropertyType.TypeKind <> tkClass) then
-  //          begin
-  //            if (_isRequiredAttribute) and (not _isDefaultAttribute) then
-  //              raise Exception.Create('Property required: ' + _customName);
-  //            if not _isRequiredAttribute then
-  //              Continue;
-  //          end;
-  //
-  //          _minAttributeValue := -1;
-  //          if (Prop.GetAttribute<MinAttribute> <> nil) then
-  //            _minAttributeValue := Prop.GetAttribute<MinAttribute>.Value;
-  //
-  //          _maxAttributeValue := -1;
-  //          if (Prop.GetAttribute<MaxAttribute> <> nil) then
-  //            _maxAttributeValue := Prop.GetAttribute<MaxAttribute>.Value;
-  //
-  //          if (AIgnoreEmpty and checkIfTValueIsEmpty(FieldValue)
-  //            and (Prop.PropertyType.TypeKind <> tkClass)) then
-  //            Continue;
-  //
-  //          JSONElement := getJSONFromTValue(FieldValue, AIgnoreEmpty, _minAttributeValue, _maxAttributeValue);
-  //
-  //          if (JSONElement <> nil) then
-  //            Result.AddPair(_customName, JSONElement);
-  //        except
-  //          on E: Exception do
-  //          begin
-  //            if _isRequiredAttribute then
-  //            begin
-  //              _errorMessage := Format('JSON process error in property "%s": %s',
-  //                [Prop.Name, E.Message]);
-  //              raise Exception.Create(_errorMessage);
-  //            end;
-  //            Continue;
-  //          end;
-  //        end;
-  //      end;
-  //    end;
-  //  except
-  //    on E: Exception do
-  //    begin
-  //      Result.Free;
-  //      raise;
-  //    end;
-  //  end;
-end;
 
 function getCreateTemporaryTableFromQuery_SQLStmt(const tableName: string; const queryStmt: string): string;
 const
@@ -464,6 +176,460 @@ begin
     executeQuery(_queryStmt, _connection);
     _isCreated := false;
   end;
+end;
+
+function TTemporaryTable.getMySQLTypeFromRttiType(rttiType: TRttiType): string;
+var
+  _result: string;
+begin
+  _result := 'TEXT';
+
+  case rttiType.TypeKind of
+    tkInteger, tkInt64:
+      _result := 'BIGINT';
+
+    tkFloat:
+      begin
+        if rttiType.Handle = TypeInfo(TDateTime) then
+        begin
+          _result := 'DATETIME';
+        end
+        else if rttiType.Handle = TypeInfo(TDate) then
+        begin
+          _result := 'DATE';
+        end
+        else
+        begin
+          _result := 'DOUBLE';
+        end;
+      end;
+
+    tkString, tkLString, tkWString, tkUString:
+      _result := 'TEXT';
+
+    tkEnumeration:
+      begin
+        if rttiType.Handle = TypeInfo(Boolean) then
+        begin
+          _result := 'TINYINT(1)';
+        end
+        else
+        begin
+          _result := 'VARCHAR(50)';
+        end;
+      end;
+
+    tkChar, tkWChar:
+      _result := 'CHAR(1)';
+
+    tkVariant:
+      _result := 'TEXT';
+
+    tkRecord, tkClass:
+      _result := 'TEXT';
+
+  else
+    _result := 'TEXT';
+  end;
+
+  Result := _result;
+end;
+
+function TTemporaryTable.getValueAsString(value: TValue; fieldType: TRttiType): string;
+var
+  _result: string;
+  _dateTime: TDateTime;
+  _isNull: boolean;
+begin
+  _isNull := value.IsEmpty;
+
+  if _isNull then
+  begin
+    _result := 'NULL';
+  end
+  else
+  begin
+    case fieldType.TypeKind of
+      tkInteger, tkInt64:
+        _result := value.AsInteger.ToString;
+
+      tkFloat:
+        begin
+          if fieldType.Handle = TypeInfo(TDateTime) then
+          begin
+            _dateTime := value.AsType<TDateTime>;
+            _result := QuotedStr(FormatDateTime('yyyy-mm-dd hh:nn:ss', _dateTime));
+          end
+          else if fieldType.Handle = TypeInfo(TDate) then
+          begin
+            _dateTime := value.AsType<TDate>;
+            _result := QuotedStr(FormatDateTime('yyyy-mm-dd', _dateTime));
+          end
+          else
+          begin
+            _result := StringReplace(value.AsExtended.ToString, ',', '.', [rfReplaceAll]);
+          end;
+        end;
+
+      tkString, tkLString, tkWString, tkUString:
+        _result := QuotedStr(value.AsString);
+
+      tkEnumeration:
+        begin
+          if fieldType.Handle = TypeInfo(Boolean) then
+          begin
+            if value.AsBoolean then
+            begin
+              _result := '1';
+            end
+            else
+            begin
+              _result := '0';
+            end;
+          end
+          else
+          begin
+            _result := QuotedStr(value.ToString);
+          end;
+        end;
+
+      tkChar, tkWChar:
+        _result := QuotedStr(value.ToString);
+
+      tkVariant:
+        _result := QuotedStr(VarToStr(value.AsVariant));
+
+    else
+      _result := QuotedStr(value.ToString);
+    end;
+  end;
+
+  Result := _result;
+end;
+
+function TTemporaryTable.getCreateTableFromTypeInfo_SQLStmt(typeInfo: PTypeInfo): string;
+const
+  CREATE_TABLE_TEMPLATE = 'CREATE TEMPORARY TABLE `%s` (%s)';
+var
+  _result: string;
+  _ctx: TRttiContext;
+  _rttiType: TRttiType;
+  _field: TRttiField;
+  _prop: TRttiProperty;
+  _fields: TStringList;
+  _fieldName: string;
+  _fieldType: string;
+  _customName: string;
+  _fieldsStr: string;
+  i: integer;
+begin
+  _fields := TStringList.Create;
+  try
+    _rttiType := _ctx.GetType(typeInfo);
+
+    if _rttiType.TypeKind = tkRecord then
+    begin
+      for _field in _rttiType.GetFields do
+      begin
+        if _field.GetAttribute<IgnoreAttribute> <> nil then
+        begin
+          Continue;
+        end;
+
+        _fieldName := _field.Name;
+        if _field.GetAttribute<CustomNameAttribute> <> nil then
+        begin
+          _customName := _field.GetAttribute<CustomNameAttribute>.Value;
+          _fieldName := _customName;
+        end;
+
+        _fieldType := getMySQLTypeFromRttiType(_field.FieldType);
+        _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
+      end;
+    end
+    else if _rttiType.TypeKind = tkClass then
+    begin
+      for _field in (_rttiType as TRttiInstanceType).GetFields do
+      begin
+        if not(_field.Visibility in [mvPublic, mvPublished]) then
+        begin
+          Continue;
+        end;
+
+        if _field.GetAttribute<IgnoreAttribute> <> nil then
+        begin
+          Continue;
+        end;
+
+        _fieldName := _field.Name;
+        if _field.GetAttribute<CustomNameAttribute> <> nil then
+        begin
+          _customName := _field.GetAttribute<CustomNameAttribute>.Value;
+          _fieldName := _customName;
+        end;
+
+        _fieldType := getMySQLTypeFromRttiType(_field.FieldType);
+        _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
+      end;
+
+      for _prop in (_rttiType as TRttiInstanceType).GetProperties do
+      begin
+        if not(_prop.Visibility in [mvPublic, mvPublished]) then
+        begin
+          Continue;
+        end;
+
+        if not _prop.IsReadable then
+        begin
+          Continue;
+        end;
+
+        if _prop.GetAttribute<IgnoreAttribute> <> nil then
+        begin
+          Continue;
+        end;
+
+        _fieldName := _prop.Name;
+        if _prop.GetAttribute<CustomNameAttribute> <> nil then
+        begin
+          _customName := _prop.GetAttribute<CustomNameAttribute>.Value;
+          _fieldName := _customName;
+        end;
+
+        _fieldType := getMySQLTypeFromRttiType(_prop.PropertyType);
+        _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
+      end;
+    end
+    else
+    begin
+      raise Exception.Create('Type must be a record or class');
+    end;
+
+    if _fields.Count = 0 then
+    begin
+      raise Exception.Create('No fields found in type');
+    end;
+
+    _fieldsStr := '';
+    for i := 0 to _fields.Count - 1 do
+    begin
+      if i > 0 then
+      begin
+        _fieldsStr := _fieldsStr + ', ';
+      end;
+      _fieldsStr := _fieldsStr + _fields[i];
+    end;
+
+    _result := Format(CREATE_TABLE_TEMPLATE, [tableName, _fieldsStr]);
+  finally
+    FreeAndNil(_fields);
+  end;
+
+  Result := _result;
+end;
+
+procedure TTemporaryTable.insertDataBatch(data: TArray<TValue>; batchSize: integer);
+const
+  INSERT_TEMPLATE = 'INSERT INTO `%s` VALUES %s';
+  MAX_BATCH_SIZE = 1000;
+var
+  _ctx: TRttiContext;
+  _rttiType: TRttiType;
+  _field: TRttiField;
+  _prop: TRttiProperty;
+  _batchCount: integer;
+  _valuesList: TStringList;
+  _insertStatement: string;
+  _rowValues: TStringList;
+  _fieldValue: TValue;
+  _fieldValueStr: string;
+  _actualBatchSize: integer;
+  _dataItem: TValue;
+  _recordPtr: Pointer;
+  _classInstance: TObject;
+  i: integer;
+  j: integer;
+begin
+  if Length(data) = 0 then
+  begin
+    Exit;
+  end;
+
+  _actualBatchSize := batchSize;
+  if _actualBatchSize <= 0 then
+  begin
+    _actualBatchSize := MAX_BATCH_SIZE;
+  end;
+
+  _valuesList := TStringList.Create;
+  _rowValues := TStringList.Create;
+  try
+    _batchCount := 0;
+    _rttiType := _ctx.GetType(data[0].TypeInfo);
+
+    for i := 0 to High(data) do
+    begin
+      _dataItem := data[i];
+      _rowValues.Clear;
+
+      if _rttiType.TypeKind = tkRecord then
+      begin
+        _recordPtr := _dataItem.GetReferenceToRawData;
+
+        for _field in _rttiType.GetFields do
+        begin
+          if _field.GetAttribute<IgnoreAttribute> <> nil then
+          begin
+            Continue;
+          end;
+
+          _fieldValue := _field.GetValue(_recordPtr);
+          _fieldValueStr := getValueAsString(_fieldValue, _field.FieldType);
+          _rowValues.Add(_fieldValueStr);
+        end;
+      end
+      else if _rttiType.TypeKind = tkClass then
+      begin
+        _classInstance := _dataItem.AsObject;
+
+        if _classInstance = nil then
+        begin
+          Continue;
+        end;
+
+        for _field in (_rttiType as TRttiInstanceType).GetFields do
+        begin
+          if not(_field.Visibility in [mvPublic, mvPublished]) then
+          begin
+            Continue;
+          end;
+
+          if _field.GetAttribute<IgnoreAttribute> <> nil then
+          begin
+            Continue;
+          end;
+
+          try
+            _fieldValue := _field.GetValue(_classInstance);
+            _fieldValueStr := getValueAsString(_fieldValue, _field.FieldType);
+            _rowValues.Add(_fieldValueStr);
+          except
+            _rowValues.Add('NULL');
+          end;
+        end;
+
+        for _prop in (_rttiType as TRttiInstanceType).GetProperties do
+        begin
+          if not(_prop.Visibility in [mvPublic, mvPublished]) then
+          begin
+            Continue;
+          end;
+
+          if not _prop.IsReadable then
+          begin
+            Continue;
+          end;
+
+          if _prop.GetAttribute<IgnoreAttribute> <> nil then
+          begin
+            Continue;
+          end;
+
+          try
+            _fieldValue := _prop.GetValue(_classInstance);
+            _fieldValueStr := getValueAsString(_fieldValue, _prop.PropertyType);
+            _rowValues.Add(_fieldValueStr);
+          except
+            _rowValues.Add('NULL');
+          end;
+        end;
+      end;
+
+      if _rowValues.Count > 0 then
+      begin
+        _fieldValueStr := '';
+        for j := 0 to _rowValues.Count - 1 do
+        begin
+          if j > 0 then
+          begin
+            _fieldValueStr := _fieldValueStr + ', ';
+          end;
+          _fieldValueStr := _fieldValueStr + _rowValues[j];
+        end;
+        _valuesList.Add('(' + _fieldValueStr + ')');
+        _batchCount := _batchCount + 1;
+      end;
+
+      if (_batchCount >= _actualBatchSize) or (i = High(data)) then
+      begin
+        if _valuesList.Count > 0 then
+        begin
+          _fieldValueStr := '';
+          for j := 0 to _valuesList.Count - 1 do
+          begin
+            if j > 0 then
+            begin
+              _fieldValueStr := _fieldValueStr + ', ';
+            end;
+            _fieldValueStr := _fieldValueStr + _valuesList[j];
+          end;
+          _insertStatement := Format(INSERT_TEMPLATE, [tableName, _fieldValueStr]);
+          executeQuery(_insertStatement, _connection);
+          _valuesList.Clear;
+          _batchCount := 0;
+        end;
+      end;
+    end;
+  finally
+    FreeAndNil(_valuesList);
+    FreeAndNil(_rowValues);
+  end;
+end;
+
+procedure TTemporaryTable.recreate<T>(data: TArray<T>; tableName: string = EMPTY_STRING; connection: TConnection = nil);
+var
+  _tableName: string;
+  _createTableStmt: string;
+  _dataAsValues: TArray<TValue>;
+  _value: TValue;
+  i: integer;
+begin
+  Self.drop;
+
+  _tableName := tableName;
+  if _tableName = EMPTY_STRING then
+  begin
+    _tableName := Self.tableName;
+  end;
+
+  if connection <> nil then
+  begin
+    Self._connection := connection;
+  end;
+
+  Self.tableName := _tableName;
+  if Self.tableName = EMPTY_STRING then
+  begin
+    Self.tableName := getRandString();
+  end;
+
+  if Length(data) = 0 then
+  begin
+    raise Exception.Create('Data array cannot be empty');
+  end;
+
+  _createTableStmt := getCreateTableFromTypeInfo_SQLStmt(TypeInfo(T));
+  executeQuery(_createTableStmt, _connection);
+  _isCreated := true;
+
+  SetLength(_dataAsValues, Length(data));
+  for i := 0 to High(data) do
+  begin
+    TValue.Make(@data[i], TypeInfo(T), _value);
+    _dataAsValues[i] := _value;
+  end;
+
+  insertDataBatch(_dataAsValues, 1000);
 end;
 
 destructor TTemporaryTable.destroy;
