@@ -75,13 +75,13 @@ procedure getMySQLClientDLLFromResourceIfNotExists();
 implementation
 
 uses
-  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.FireDac.Resources,
-  Klib.Utils, KLib.Windows,
+  System.SysUtils,
   FireDAC.VCLUI.Wait,
   FireDAC.Stan.Def, FireDAC.Stan.Async,
   FireDac.DApt,
   FireDAC.Phys.MySQLDef, FireDAC.Phys.MySQL,
-  System.SysUtils;
+  Klib.Utils, KLib.Windows, KLib.FileSystem,
+  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.FireDac.Resources;
 
 destructor T_Query.Destroy;
 begin
