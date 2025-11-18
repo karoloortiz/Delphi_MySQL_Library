@@ -712,7 +712,7 @@ var
 
   _joinFieldStmtAlreadyExists: boolean;
 begin
-  _joinFieldStmtAlreadyExists := checkIfMainStringContainsSubStringNoCaseSensitive(sqlStatement, joinFieldStmt);
+  _joinFieldStmtAlreadyExists := checkIfStringContainsSubStringNoCaseSensitive(sqlStatement, joinFieldStmt);
   if not _joinFieldStmtAlreadyExists then
   begin
     _result := getSQLStatementWithJoinStmtInserted(sqlStatement, joinFieldStmt);
