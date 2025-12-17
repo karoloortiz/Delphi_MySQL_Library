@@ -156,13 +156,13 @@ procedure dumpDatabaseToFile(credentials: KLib.MySQL.Credentials.TCredentials; f
 implementation
 
 uses
-  System.SysUtils, System.StrUtils, System.Variants,
+  System.SysUtils, System.Variants,
   Data.DB,
 {$ifdef KLIB_MYSQL_FIREDAC}
   FireDAC.Stan.Param,
 {$ifend}
   KLib.Validate, KLib.sqlstring, KLib.Utils, KLib.StringUtils, KLib.Csv,
-  KLib.FileSystem;
+  KLib.FileSystem, KLib.Common;
 
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
@@ -227,15 +227,16 @@ var
   _versionAsString: string;
 begin
   _versionAsString := getMySQLVersionAsString(connection);
-  if AnsiStartsStr(MYSQL_V5_5, _versionAsString) then
+
+  if _versionAsString.StartsWith(MYSQL_V5_5) then
   begin
     version := TMySQLVersion.v5_5;
   end
-  else if AnsiStartsStr(MYSQL_V5_7, _versionAsString) then
+  else if _versionAsString.StartsWith(MYSQL_V5_7) then
   begin
     version := TMySQLVersion.v5_7;
   end
-  else if AnsiStartsStr(MYSQL_V8, _versionAsString) then
+  else if _versionAsString.StartsWith(MYSQL_V8) then
   begin
     version := TMySQLVersion.v_8;
   end
@@ -432,7 +433,7 @@ begin
         raise Exception.Create(E.Message);
       end;
 
-      _result:= myDefault();
+      _result := myDefault();
     end;
   end;
 
@@ -454,7 +455,7 @@ begin
         raise Exception.Create(E.Message);
       end;
 
-      _result:= myDefault();
+      _result := myDefault();
     end;
   end;
 
@@ -476,7 +477,7 @@ begin
         raise Exception.Create(E.Message);
       end;
 
-      _result:= myDefault();
+      _result := myDefault();
     end;
   end;
 
@@ -520,6 +521,7 @@ begin
   try
     _query.open;
     fieldResult := _query.FieldList.Fields[0].value;
+    validate(_query.recordcount > 0, 'No records found');
     _query.Close;
   finally
     FreeAndNil(_query);
