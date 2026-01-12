@@ -66,9 +66,15 @@ function getFirstFieldListFromSQLStatement(sqlStatement: string; credentials: KL
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
 function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string;
+  default: Variant): Variant; overload;
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string;
   isRaiseExceptionEnabled: boolean = false): Variant; overload;
 function tryGetFirstFieldFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials; default: Variant): Variant; overload;
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string;
   credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = false): Variant; overload;
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection;
+  default: Variant): Variant; overload;
 function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection;
   isRaiseExceptionEnabled: boolean = false): Variant; overload;
 
@@ -419,6 +425,23 @@ begin
 end;
 
 function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string;
+  default: Variant): Variant;
+var
+  _result: Variant;
+begin
+  try
+    _result := getFirstFieldFromSQLStatement(sqlStatement, connectionString);
+  except
+    on E: Exception do
+    begin
+      _result := default;
+    end;
+  end;
+
+  Result := _result;
+end;
+
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connectionString: string;
   isRaiseExceptionEnabled: boolean = false): Variant;
 var
   _result: Variant;
@@ -434,6 +457,23 @@ begin
       end;
 
       _result := myDefault();
+    end;
+  end;
+
+  Result := _result;
+end;
+
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials; default: Variant): Variant;
+var
+  _result: Variant;
+begin
+  try
+    _result := getFirstFieldFromSQLStatement(sqlStatement, credentials);
+  except
+    on E: Exception do
+    begin
+      _result := default;
     end;
   end;
 
@@ -463,7 +503,24 @@ begin
 end;
 
 function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection;
-  isRaiseExceptionEnabled: boolean = false): Variant;
+  default: Variant): Variant;
+var
+  _result: Variant;
+begin
+  try
+    _result := getFirstFieldFromSQLStatement(sqlStatement, connection);
+  except
+    on E: Exception do
+    begin
+      _result := default;
+    end;
+  end;
+
+  Result := _result;
+end;
+
+function tryGetFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection;
+  isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): Variant;
 var
   _result: Variant;
 begin
