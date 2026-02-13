@@ -831,6 +831,39 @@ begin
   query.GotoBookmark(_bookmark);
 end;
 
+function lastIndexOfSQLKeyword(upperSQL: string; keyword: string): integer;
+var
+  _pos: integer;
+  _keyLen: integer;
+  _sqlLen: integer;
+  _isWordStart: boolean;
+  _isWordEnd: boolean;
+begin
+  _keyLen := Length(keyword);
+  _sqlLen := Length(upperSQL);
+  _pos := upperSQL.LastIndexOf(keyword);
+
+  while (_pos >= 0) do
+  begin
+    _isWordStart := (_pos = 0) or CharInSet(upperSQL.Chars[_pos - 1], [' ', #9, #10, #13]);
+    _isWordEnd := ((_pos + _keyLen) >= _sqlLen) or CharInSet(upperSQL.Chars[_pos + _keyLen], [' ', #9, #10, #13]);
+
+    if _isWordStart and _isWordEnd then
+    begin
+      Result := _pos;
+      Exit;
+    end;
+
+    if _pos = 0 then
+    begin
+      Break;
+    end;
+    _pos := upperSQL.LastIndexOf(keyword, _pos - 1);
+  end;
+
+  Result := -1;
+end;
+
 function getSQLStatementWithFieldInserted(sqlStatement: string; fieldStmt: string): string;
 var
   _result: string;
@@ -840,7 +873,15 @@ var
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastPos := _tempQueryStmt.LastIndexOf('FROM') - 1;
+  _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'FROM');
+  if _lastPos >= 0 then
+  begin
+    _lastPos := _lastPos - 1;
+  end
+  else
+  begin
+    _lastPos := Length(_tempQueryStmt);
+  end;
   _insertedString := ', ' + fieldStmt + ' ';
   _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
@@ -875,8 +916,24 @@ var
   _insertedString: string;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastPos := _tempQueryStmt.LastIndexOf('WHERE') - 1;
+  _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'WHERE');
   if _lastPos = -1 then
+  begin
+    _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'GROUP BY');
+  end;
+  if _lastPos = -1 then
+  begin
+    _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'ORDER BY');
+  end;
+  if _lastPos = -1 then
+  begin
+    _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'LIMIT');
+  end;
+  if _lastPos >= 0 then
+  begin
+    _lastPos := _lastPos - 1;
+  end
+  else
   begin
     _lastPos := Length(_tempQueryStmt);
   end;
@@ -893,18 +950,35 @@ var
   _lastPos: integer;
   _tempQueryStmt: string;
   _insertedString: string;
+  _hasWhere: boolean;
 begin
   _tempQueryStmt := UpperCase(sqlStatement);
-  _lastPos := _tempQueryStmt.LastIndexOf('ORDER') - 1;
+  _hasWhere := lastIndexOfSQLKeyword(_tempQueryStmt, 'WHERE') >= 0;
+  _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'GROUP BY');
   if _lastPos = -1 then
   begin
-    _lastPos := _tempQueryStmt.LastIndexOf('LIMIT') - 1;
-    if _lastPos = -1 then
-    begin
-      _lastPos := Length(_tempQueryStmt);
-    end;
+    _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'ORDER BY');
   end;
-  _insertedString := ' ' + whereFieldStmt + ' ';
+  if _lastPos = -1 then
+  begin
+    _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'LIMIT');
+  end;
+  if _lastPos >= 0 then
+  begin
+    _lastPos := _lastPos - 1;
+  end
+  else
+  begin
+    _lastPos := Length(_tempQueryStmt);
+  end;
+  if _hasWhere then
+  begin
+    _insertedString := ' AND ' + whereFieldStmt + ' ';
+  end
+  else
+  begin
+    _insertedString := ' WHERE ' + whereFieldStmt + ' ';
+  end;
   _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
   Result := _result;
