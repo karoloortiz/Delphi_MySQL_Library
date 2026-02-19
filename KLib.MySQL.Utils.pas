@@ -43,6 +43,10 @@ uses
   KLib.MySQL.Driver, KLib.MySQL.Info, KLib.MySQL.Credentials,
   System.Classes;
 
+function getNow(connectionString: string): TDateTime; overload;
+function getNow(credentials: KLib.MySQL.Credentials.TCredentials): TDateTime; overload;
+function getNow(connection: TConnection): TDateTime; overload;
+
 function checkIfMysqlVersionIs_v_8(connectionString: string): boolean; overload;
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean; overload;
 function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
@@ -170,6 +174,39 @@ uses
   KLib.Validate, KLib.sqlstring, KLib.Utils, KLib.StringUtils, KLib.Csv,
   KLib.FileSystem, KLib.Common;
 
+function getNow(connectionString: string): TDateTime; overload;
+const
+  SQL_STATEMENT = 'SELECT NOW()';
+var
+  now: TDateTime;
+begin
+  now := getFirstFieldFromSQLStatement(SQL_STATEMENT, connectionString);
+
+  Result := now;
+end;
+
+function getNow(credentials: KLib.MySQL.Credentials.TCredentials): TDateTime; overload;
+const
+  SQL_STATEMENT = 'SELECT NOW()';
+var
+  now: TDateTime;
+begin
+  now := getFirstFieldFromSQLStatement(SQL_STATEMENT, credentials);
+
+  Result := now;
+end;
+
+function getNow(connection: TConnection): TDateTime; overload;
+const
+  SQL_STATEMENT = 'SELECT NOW()';
+var
+  now: TDateTime;
+begin
+  now := getFirstFieldFromSQLStatement(SQL_STATEMENT, connection);
+
+  Result := now;
+end;
+
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
   _result: boolean;
@@ -275,7 +312,7 @@ end;
 
 function getMySQLVersionAsString(connection: TConnection): string;
 const
-  SQL_STATEMENT = 'select @@version';
+  SQL_STATEMENT = 'SELECT @@version';
 var
   version: string;
 begin
@@ -335,7 +372,7 @@ end;
 
 function getMySQLDataDir(connection: TConnection): string;
 const
-  SQL_STATEMENT = 'select @@datadir';
+  SQL_STATEMENT = 'SELECT @@datadir';
 var
   dataDir: string;
 begin
