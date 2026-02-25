@@ -780,6 +780,56 @@ begin
   end;
 end;
 
+function findDelimiterOutsideQuotes(sql: string; delimiter: string): integer;
+var
+  i: integer;
+  _inQuote: boolean;
+  _inLineComment: boolean;
+  _delimLen: integer;
+  _sqlLen: integer;
+  _found: boolean;
+begin
+  _inQuote := false;
+  _inLineComment := false;
+  _delimLen := Length(delimiter);
+  _sqlLen := Length(sql);
+  _found := false;
+  i := 1;
+  while (i <= _sqlLen) and (not _found) do
+  begin
+    if _inLineComment then
+    begin
+      if sql[i] = #10 then
+        _inLineComment := false;
+    end
+    else if _inQuote then
+    begin
+      if sql[i] = '''' then
+      begin
+        if (i < _sqlLen) and (sql[i + 1] = '''') then
+          i := i + 1
+        else
+          _inQuote := false;
+      end;
+    end
+    else
+    begin
+      if (i + 1 <= _sqlLen) and (sql[i] = '-') and (sql[i + 1] = '-') then
+        _inLineComment := true
+      else if sql[i] = '''' then
+        _inQuote := true
+      else if Copy(sql, i, _delimLen) = delimiter then
+        _found := true;
+    end;
+    if not _found then
+      i := i + 1;
+  end;
+  if _found then
+    Result := i
+  else
+    Result := 0;
+end;
+
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 const
   DEFAULT_DELIMITER = ';';
@@ -798,7 +848,7 @@ begin
 
   while not _exit do
   begin
-    _delimiterStartPosition := myAnsiPos(_delimiter, _scriptSQL, NOT_CASE_SENSITIVE);
+    _delimiterStartPosition := findDelimiterOutsideQuotes(_scriptSQL, _delimiter);
     splitStrings(_scriptSQL, _delimiterStartPosition, Length(_delimiter), _currentQuery, _scriptSQL);
 
     executeQuery(_currentQuery, connection, isRaiseExceptionEnabled);
