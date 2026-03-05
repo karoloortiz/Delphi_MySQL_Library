@@ -1038,7 +1038,18 @@ var
   _tempQueryStmt: string;
   _insertedString: string;
   _hasWhere: boolean;
+  _cleanedWhereFieldStmt: string;
 begin
+  _cleanedWhereFieldStmt := Trim(whereFieldStmt);
+  if UpperCase(Copy(_cleanedWhereFieldStmt, 1, 4)) = 'AND ' then
+  begin
+    _cleanedWhereFieldStmt := Trim(Copy(_cleanedWhereFieldStmt, 5, Length(_cleanedWhereFieldStmt)));
+  end
+  else if UpperCase(Copy(_cleanedWhereFieldStmt, 1, 6)) = 'WHERE ' then
+  begin
+    _cleanedWhereFieldStmt := Trim(Copy(_cleanedWhereFieldStmt, 7, Length(_cleanedWhereFieldStmt)));
+  end;
+
   _tempQueryStmt := UpperCase(sqlStatement);
   _hasWhere := lastIndexOfSQLKeyword(_tempQueryStmt, 'WHERE') >= 0;
   _lastPos := lastIndexOfSQLKeyword(_tempQueryStmt, 'GROUP BY');
@@ -1060,11 +1071,11 @@ begin
   end;
   if _hasWhere then
   begin
-    _insertedString := ' AND ' + whereFieldStmt + ' ';
+    _insertedString := ' AND ' + _cleanedWhereFieldStmt + ' ';
   end
   else
   begin
-    _insertedString := ' WHERE ' + whereFieldStmt + ' ';
+    _insertedString := ' WHERE ' + _cleanedWhereFieldStmt + ' ';
   end;
   _result := getMainStringWithSubStringInserted(sqlStatement, _insertedString, _lastPos);
 
