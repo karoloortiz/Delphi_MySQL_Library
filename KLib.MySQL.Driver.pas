@@ -46,6 +46,13 @@ interface
 //FOR MYDAC
 //
 //##############################################################################
+
+{$ifndef KLIB_MYSQL_FIREDAC}
+{$ifndef KLIB_MYSQL_MYDAC}
+{$define KLIB_MYSQL_FIREDAC}  // FireDAC default
+{$endif}
+{$endif}
+
 {$ifndef KLIB_GLOBALS}
 {$include KLib.MySQL.inc}
 {$ifend}
