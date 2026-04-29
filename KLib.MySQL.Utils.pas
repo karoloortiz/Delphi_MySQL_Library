@@ -804,7 +804,12 @@ begin
     end
     else if _inQuote then
     begin
-      if sql[i] = '''' then
+      if sql[i] = '\' then
+      begin
+        if i < _sqlLen then
+          i := i + 1;
+      end
+      else if sql[i] = '''' then
       begin
         if (i < _sqlLen) and (sql[i + 1] = '''') then
           i := i + 1
@@ -1642,7 +1647,7 @@ begin
               begin
                 case _query.Fields[i].DataType of
                   ftString, ftMemo, ftWideString, ftWideMemo:
-                    _fieldValue := QuotedStr(_query.Fields[i].AsString);
+                    _fieldValue := getMySQLSingleQuotedString(_query.Fields[i].AsString);
                   ftDateTime, ftDate, ftTime:
                     _fieldValue := QuotedStr(FormatDateTime('yyyy-mm-dd hh:nn:ss', _query.Fields[i].AsDateTime));
                   ftBoolean:
@@ -1653,7 +1658,7 @@ begin
                     if _query.Fields[i].IsNull then
                       _fieldValue := 'NULL'
                     else
-                      _fieldValue := QuotedStr(_query.Fields[i].AsString);
+                      _fieldValue := getMySQLSingleQuotedString(_query.Fields[i].AsString);
                 else
                   _fieldValue := _query.Fields[i].AsString;
                 end;
