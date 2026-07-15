@@ -101,6 +101,7 @@ begin
     Values['Password'] := credentials.credentials.password;
     Values['Port'] := IntToStr(credentials.port);
     Values['Database'] := credentials.database;
+    Values['CharacterSet'] := CHARSET_NAMES[credentials.charset];
     if (credentials.useSSL) then
     begin
       Values['UseSSL'] := 'True';

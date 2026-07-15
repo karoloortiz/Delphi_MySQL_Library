@@ -42,6 +42,20 @@ uses
   KLib.Types, KLib.Constants;
 
 type
+  // MySQL client charset for the connection. Maps to Options.Charset (MyDAC) and the
+  // CharacterSet connection param (FireDAC). It governs how strings travel on the wire:
+  // a Unicode charset preserves characters outside latin1, single-byte charsets degrade them.
+  // Full list from MySQL SHOW CHARACTER SET; utf8mb4 kept first so it is the zero-default.
+  // Scoped (TCharset.xxx) to avoid polluting the global scope with names like binary/ascii/greek.
+{$SCOPEDENUMS ON}
+  TCharset = (
+    utf8mb4, utf8, ucs2, utf16, utf16le, utf32,
+    armscii8, ascii, big5, binary, cp1250, cp1251, cp1256, cp1257,
+    cp850, cp852, cp866, cp932, dec8, eucjpms, euckr, gb18030, gb2312,
+    gbk, geostd8, greek, hebrew, hp8, keybcs2, koi8r, koi8u, latin1,
+    latin2, latin5, latin7, macce, macroman, sjis, swe7, tis620, ujis);
+{$SCOPEDENUMS OFF}
+
   TCredentials = record
     credentials: KLib.Types.TCredentials;
     server: string;
@@ -49,6 +63,8 @@ type
     database: string;
     useSSL: boolean;
     use_caching_sha2_password_dll: boolean;
+    charset: TCharset;
+
     function getMySQLCliCredentialsParams: string;
     function checkConnection: boolean;
 
@@ -56,6 +72,18 @@ type
   end;
 
 const
+  // MySQL charset name per enum value (SAME ORDER as TCharset).
+  CHARSET_NAMES: array[TCharset] of string = (
+    'utf8mb4', 'utf8', 'ucs2', 'utf16', 'utf16le', 'utf32',
+    'armscii8', 'ascii', 'big5', 'binary', 'cp1250', 'cp1251', 'cp1256', 'cp1257',
+    'cp850', 'cp852', 'cp866', 'cp932', 'dec8', 'eucjpms', 'euckr', 'gb18030', 'gb2312',
+    'gbk', 'geostd8', 'greek', 'hebrew', 'hp8', 'keybcs2', 'koi8r', 'koi8u', 'latin1',
+    'latin2', 'latin5', 'latin7', 'macce', 'macroman', 'sjis', 'swe7', 'tis620', 'ujis');
+
+  // Unicode charsets: for these MyDAC needs Options.UseUnicode := True.
+  UNICODE_CHARSETS = [TCharset.utf8mb4, TCharset.utf8, TCharset.ucs2,
+    TCharset.utf16, TCharset.utf16le, TCharset.utf32];
+
   DEFAULT_MYSQL_CREDENTIALS: TCredentials = (
     credentials: (username: 'root'; password: 'masterkey');
     server: LOCALHOST_IP_ADDRESS;
@@ -63,6 +91,7 @@ const
     database: '';
     useSSL: false;
     use_caching_sha2_password_dll: true;
+    charset: TCharset.utf8mb4;
   );
 
 implementation

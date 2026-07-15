@@ -59,7 +59,7 @@ type
     property pooled: boolean read _get_pooled write _set_pooled;
     property isAutoReconnectEnabled: boolean read _get_isAutoReconnectEnabled write _set_isAutoReconnectEnabled;
     constructor Create(mySQLCredentials: TCredentials); reintroduce; overload;
-      destructor Destroy; override;
+    destructor Destroy; override;
   end;
 
 function _getMySQLTConnection(mySQLCredentials: TCredentials): T_Connection;
@@ -143,14 +143,14 @@ var
 begin
   validateRequiredMySQLProperties(mySQLCredentials);
   connection := TMyConnection.Create(nil);
-  with connection do
-  begin
-    Server := mysqlCredentials.server;
-    Username := mysqlCredentials.credentials.username;
-    Password := mysqlCredentials.credentials.password;
-    Port := mysqlCredentials.port;
-    Database := mysqlCredentials.database;
-  end;
+
+  connection.Server := mysqlCredentials.server;
+  connection.Username := mysqlCredentials.credentials.username;
+  connection.Password := mysqlCredentials.credentials.password;
+  connection.Port := mysqlCredentials.port;
+  connection.Database := mysqlCredentials.database;
+  connection.Options.Charset := CHARSET_NAMES[mySQLCredentials.charset];
+  connection.Options.UseUnicode := mySQLCredentials.charset in UNICODE_CHARSETS;
 
   Result := connection;
 end;
