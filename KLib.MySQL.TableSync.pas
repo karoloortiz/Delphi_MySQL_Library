@@ -61,8 +61,9 @@ unit KLib.MySQL.TableSync;
 //   - Staging+merge atomic: INSERT...ON DUPLICATE KEY UPDATE (col=VALUES(col)
 //     for all non-PK columns present in the query).
 //   - When isDeleteOrphansEnabled=true: after merge, deletes from target the
-//     records not present in the result via LEFT JOIN on PK. Sanity check:
-//     rec_count must equal staging_count, otherwise an exception is raised.
+//     records not present in the result via LEFT JOIN on the key (PK by default,
+//     or orphanKeyColumns when given). Sanity check: rec_count must equal
+//     staging_count, otherwise an exception is raised.
 //   - Errors -> exception with the target table name in the message.
 
 interface
@@ -79,6 +80,13 @@ type
   TTableSyncRowProc = reference to procedure(const query: TQuery; var row: sqlstring;
     processed: Integer; total: Integer);
 
+// orphanKeyColumns: overrides the key used for the delete-orphans join (and excluded from
+//   the merge SET). Defaults to the detected PRIMARY KEY. Pass the business-key columns when
+//   the target's PRIMARY is a surrogate (e.g. auto_increment id) not present in the query:
+//   without it, delete-orphans would join on the surrogate and wipe the whole table.
+// insertOnlyColumns: columns excluded from the ON DUPLICATE KEY UPDATE SET. On a new row they
+//   are inserted from the query; on an existing row they are left untouched. Use for
+//   web/target-managed fields that must survive re-syncs without a snapshot-and-restore dance.
 function syncTable(
   const sourceConn: TConnection;
   const targetConn: TConnection;
@@ -87,7 +95,9 @@ function syncTable(
   isDeleteOrphansEnabled: boolean;
   batchSize: Integer = 500;
   const onRow: TTableSyncRowProc = nil;
-  const stagingTableName: string = ''
+  const stagingTableName: string = '';
+  const orphanKeyColumns: TArray<string> = nil;
+  const insertOnlyColumns: TArray<string> = nil
   ): Integer;
 
 implementation
@@ -133,6 +143,9 @@ type
     dispatchers: TArray<TFieldDispatcher>;
     columns: TArray<string>;
     primaryKeys: TArray<string>;
+    orphanKeyColumns: TArray<string>;
+    keyColumns: TArray<string>;
+    insertOnlyColumns: TArray<string>;
 
     sourceCommand: TQuery;
     rowTemplate: string;
@@ -142,6 +155,8 @@ type
 
     function readColumnInfo(const reader: TQuery): TColumnInfo;
     function joinCsv(const names: TArray<string>): string;
+    function hasColumn(const columnName: string): boolean;
+    procedure validateColumnsExist(const columnNames: TArray<string>; const role: string);
     function buildRowTemplate: string;
     function buildMergeSql: string;
     function buildDeleteOrphansSql: string;
@@ -165,7 +180,9 @@ type
       aIsDeleteOrphansEnabled: boolean;
       aBatchSize: Integer;
       const aOnRow: TTableSyncRowProc;
-      const aStagingTableName: string);
+      const aStagingTableName: string;
+      const aOrphanKeyColumns: TArray<string>;
+      const aInsertOnlyColumns: TArray<string>);
     destructor destroy; override;
     function execute: Integer;
   end;
@@ -178,7 +195,9 @@ constructor TTableSyncRunner.create(
   aIsDeleteOrphansEnabled: boolean;
   aBatchSize: Integer;
   const aOnRow: TTableSyncRowProc;
-  const aStagingTableName: string);
+  const aStagingTableName: string;
+  const aOrphanKeyColumns: TArray<string>;
+  const aInsertOnlyColumns: TArray<string>);
 begin
   inherited create;
   sourceConnection := aSourceConn;
@@ -187,6 +206,8 @@ begin
   sourceQueryText := aSourceQuery;
   isDeleteOrphansEnabled := aIsDeleteOrphansEnabled;
   onRowCallback := aOnRow;
+  orphanKeyColumns := aOrphanKeyColumns;
+  insertOnlyColumns := aInsertOnlyColumns;
 
   if aStagingTableName <> '' then
   begin
@@ -274,24 +295,38 @@ function TTableSyncRunner.buildMergeSql: string;
 var
   _i: Integer;
   _j: Integer;
-  _isPk: boolean;
+  _isExcluded: boolean;
   _setCsv: string;
   finalSql: string;
 begin
   _setCsv := '';
   for _i := 0 to High(columns) do
   begin
-    _isPk := false;
-    for _j := 0 to High(primaryKeys) do
+    // a column stays out of the SET when it is a key (the match key is never updated)
+    // or insert-only (written on INSERT, left untouched on UPDATE)
+    _isExcluded := false;
+    for _j := 0 to High(keyColumns) do
     begin
-      if SameText(columns[_i], primaryKeys[_j]) then
+      if SameText(columns[_i], keyColumns[_j]) then
       begin
-        _isPk := true;
+        _isExcluded := true;
         Break;
       end;
     end;
 
-    if not _isPk then
+    if not _isExcluded then
+    begin
+      for _j := 0 to High(insertOnlyColumns) do
+      begin
+        if SameText(columns[_i], insertOnlyColumns[_j]) then
+        begin
+          _isExcluded := true;
+          Break;
+        end;
+      end;
+    end;
+
+    if not _isExcluded then
     begin
       if _setCsv <> '' then
       begin
@@ -299,6 +334,13 @@ begin
       end;
       _setCsv := _setCsv + columns[_i] + '=VALUES(' + columns[_i] + ')';
     end;
+  end;
+
+  // when every column is a key or insert-only the SET would be empty (invalid SQL): fall back
+  // to a no-op on the first key column, so the UPDATE leaves the existing row unchanged
+  if _setCsv = '' then
+  begin
+    _setCsv := keyColumns[0] + '=' + keyColumns[0];
   end;
 
   finalSql := 'INSERT INTO ' + targetTableName + ' (' + joinCsv(columns) + ') ' +
@@ -315,18 +357,18 @@ var
   finalSql: string;
 begin
   _onCsv := '';
-  for _i := 0 to High(primaryKeys) do
+  for _i := 0 to High(keyColumns) do
   begin
     if _onCsv <> '' then
     begin
       _onCsv := _onCsv + ' AND ';
     end;
-    _onCsv := _onCsv + 's.' + primaryKeys[_i] + '=a.' + primaryKeys[_i];
+    _onCsv := _onCsv + 's.' + keyColumns[_i] + '=a.' + keyColumns[_i];
   end;
 
   finalSql := 'DELETE a FROM ' + targetTableName + ' a ' +
     'LEFT JOIN ' + stagingName + ' s ON ' + _onCsv + ' ' +
-    'WHERE s.' + primaryKeys[0] + ' IS NULL';
+    'WHERE s.' + keyColumns[0] + ' IS NULL';
 
   Result := finalSql;
 end;
@@ -372,6 +414,38 @@ begin
   else
   begin
     row.paramByNameAsString(_columnName, dispatcher.field.AsString);
+  end;
+end;
+
+function TTableSyncRunner.hasColumn(const columnName: string): boolean;
+var
+  _i: Integer;
+  finalResult: boolean;
+begin
+  finalResult := false;
+  for _i := 0 to High(schema) do
+  begin
+    if SameText(schema[_i].name, columnName) then
+    begin
+      finalResult := true;
+      Break;
+    end;
+  end;
+
+  Result := finalResult;
+end;
+
+procedure TTableSyncRunner.validateColumnsExist(const columnNames: TArray<string>; const role: string);
+var
+  _i: Integer;
+begin
+  for _i := 0 to High(columnNames) do
+  begin
+    if not hasColumn(columnNames[_i]) then
+    begin
+      raise Exception.Create(role + ' column "' + columnNames[_i] +
+        '" not found in target table "' + targetTableName + '"');
+    end;
   end;
 end;
 
@@ -425,6 +499,22 @@ begin
   begin
     raise Exception.Create('target table "' + targetTableName + '" has no primary key');
   end;
+
+  // effective key for merge and delete-orphans: explicit override (UNIQUE-index columns) when
+  // given, otherwise the detected PRIMARY KEY. Needed when the PRIMARY is a surrogate (e.g.
+  // auto_increment id) absent from the query: without the override delete-orphans would join
+  // on the surrogate and wipe the whole table.
+  if Length(orphanKeyColumns) > 0 then
+  begin
+    validateColumnsExist(orphanKeyColumns, 'orphan key');
+    keyColumns := orphanKeyColumns;
+  end
+  else
+  begin
+    keyColumns := primaryKeys;
+  end;
+
+  validateColumnsExist(insertOnlyColumns, 'insert-only');
 end;
 
 procedure TTableSyncRunner.openSourceCommand;
@@ -638,13 +728,16 @@ function syncTable(
   isDeleteOrphansEnabled: boolean;
   batchSize: Integer = 500;
   const onRow: TTableSyncRowProc = nil;
-  const stagingTableName: string = ''
+  const stagingTableName: string = '';
+  const orphanKeyColumns: TArray<string> = nil;
+  const insertOnlyColumns: TArray<string> = nil
   ): Integer;
 var
   _runner: TTableSyncRunner;
 begin
   _runner := TTableSyncRunner.create(sourceConn, targetConn, targetTable,
-    sourceQuery, isDeleteOrphansEnabled, batchSize, onRow, stagingTableName);
+    sourceQuery, isDeleteOrphansEnabled, batchSize, onRow, stagingTableName,
+    orphanKeyColumns, insertOnlyColumns);
   try
     Result := _runner.execute;
   finally
