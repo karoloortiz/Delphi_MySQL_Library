@@ -80,13 +80,30 @@ type
   TTableSyncRowProc = reference to procedure(const query: TQuery; var row: sqlstring;
     processed: Integer; total: Integer);
 
-// orphanKeyColumns: overrides the key used for the delete-orphans join (and excluded from
-//   the merge SET). Defaults to the detected PRIMARY KEY. Pass the business-key columns when
-//   the target's PRIMARY is a surrogate (e.g. auto_increment id) not present in the query:
-//   without it, delete-orphans would join on the surrogate and wipe the whole table.
-// insertOnlyColumns: columns excluded from the ON DUPLICATE KEY UPDATE SET. On a new row they
-//   are inserted from the query; on an existing row they are left untouched. Use for
-//   web/target-managed fields that must survive re-syncs without a snapshot-and-restore dance.
+  // orphanKeyColumns: overrides the key used for the delete-orphans join (and excluded from
+  //   the merge SET). Defaults to the detected PRIMARY KEY. Pass the business-key columns when
+  //   the target's PRIMARY is a surrogate (e.g. auto_increment id) not present in the query:
+  //   without it, delete-orphans would join on the surrogate and wipe the whole table.
+  // insertOnlyColumns: columns excluded from the ON DUPLICATE KEY UPDATE SET. On a new row they
+  //   are inserted from the query; on an existing row they are left untouched. Use for
+  //   web/target-managed fields that must survive re-syncs without a snapshot-and-restore dance.
+
+  TSyncTableParams = record
+    sourceConn: TConnection;
+    targetConn: TConnection;
+    targetTable: string;
+    sourceQuery: sqlstring;
+    isDeleteOrphansEnabled: boolean;
+    batchSize: Integer;
+    onRow: TTableSyncRowProc;
+    stagingTableName: string;
+    orphanKeyColumns: TArray<string>;
+    insertOnlyColumns: TArray<string>;
+
+    procedure clear;
+  end;
+
+function syncTable(params: TSyncTableParams): Integer; overload;
 function syncTable(
   const sourceConn: TConnection;
   const targetConn: TConnection;
@@ -98,7 +115,7 @@ function syncTable(
   const stagingTableName: string = '';
   const orphanKeyColumns: TArray<string> = nil;
   const insertOnlyColumns: TArray<string> = nil
-  ): Integer;
+  ): Integer; overload;
 
 implementation
 
@@ -186,6 +203,20 @@ type
     destructor destroy; override;
     function execute: Integer;
   end;
+
+procedure TSyncTableParams.clear;
+begin
+  Self.sourceConn := nil;
+  Self.targetConn := nil;
+  Self.targetTable := '';
+  Self.sourceQuery := '';
+  Self.isDeleteOrphansEnabled := false;
+  Self.batchSize := 500;
+  Self.onRow := nil;
+  Self.stagingTableName := '';
+  Self.orphanKeyColumns := nil;
+  Self.insertOnlyColumns := nil
+end;
 
 constructor TTableSyncRunner.create(
   const aSourceConn: TConnection;
@@ -718,6 +749,22 @@ begin
   end;
 
   Result := _processedCount;
+end;
+
+function syncTable(params: TSyncTableParams): Integer; overload;
+begin
+  Result := syncTable(
+    params.sourceConn,
+    params.targetConn,
+    params.targetTable,
+    params.sourceQuery,
+    params.isDeleteOrphansEnabled,
+    params.batchSize,
+    params.onRow,
+    params.stagingTableName,
+    params.orphanKeyColumns,
+    params.insertOnlyColumns
+    );
 end;
 
 function syncTable(
