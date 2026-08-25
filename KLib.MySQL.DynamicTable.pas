@@ -39,7 +39,7 @@ unit KLib.MySQL.DynamicTable;
 interface
 
 uses
-  System.Rtti, System.TypInfo, System.Generics.Collections,
+  System.TypInfo, System.Generics.Collections,
   KLib.Constants,
   KLib.MySQL.Driver;
 
@@ -60,15 +60,6 @@ type
     function buildCreateTableSQL(dataTypeInfo: PTypeInfo): string; overload;
     function buildDropTableSQL: string;
     procedure executeCreateTable(createSQL: string);
-    procedure insertDataIntoTable(dataTypeInfo: PTypeInfo; dataValues: TArray<TValue>);
-    function mapToMySQLType(rttiType: TRttiType): string;
-    function formatValueForSQL(value: TValue; fieldType: TRttiType): string;
-    procedure executeBatchInsert(data: TArray<TValue>; dataTypeInfo: PTypeInfo);
-    function buildFieldDefinitionsFromType(rttiType: TRttiType): string;
-    function buildFieldDefinitionsFromRecord(rttiType: TRttiType): string;
-    function buildFieldDefinitionsFromClass(rttiType: TRttiType): string;
-    class function convertToTValueArray<T>(data: TArray<T>): TArray<TValue>; overload; static;
-    class function convertToTValueArray<T>(data: TList<T>): TArray<TValue>; overload; static;
 
   public
     isKeepEnabled: boolean;
@@ -88,10 +79,9 @@ type
 implementation
 
 uses
-  System.SysUtils, System.StrUtils, System.Variants, System.Classes,
-  KLib.sqlstring, KLib.Validate, KLib.Utils, KLib.Generics.Attributes,
-  KLib.StringUtils, KLib.DateTimeUtils,
-  KLib.MySQL.Utils;
+  System.SysUtils, System.Rtti,
+  KLib.Validate, KLib.Utils, KLib.StringUtils,
+  KLib.MySQL.Utils, KLib.MySQL.BatchInsert;
 
 constructor TDynamicTable.create(connection: TConnection; tableType: TTableType = TTableType.temporary);
 begin
@@ -116,8 +106,8 @@ end;
 
 function TDynamicTable.buildCreateTableSQL(selectQuery: string): string;
 const
-  CREATE_TEMPORARY_TABLE_TEMPLATE = 'CREATE TEMPORARY TABLE `%s` %s';
-  CREATE_TABLE_TEMPLATE = 'CREATE TABLE `%s` %s';
+  CREATE_TEMPORARY_TABLE_TEMPLATE = 'CREATE TEMPORARY TABLE %s %s';
+  CREATE_TABLE_TEMPLATE = 'CREATE TABLE %s %s';
 var
   _template: string;
 begin
@@ -133,22 +123,20 @@ begin
     _template := CREATE_TABLE_TEMPLATE;
   end;
 
-  Result := Format(_template, [_tableName, selectQuery]);
+  Result := Format(_template, [getQuotedTableName(_tableName), selectQuery]);
 end;
 
 function TDynamicTable.buildCreateTableSQL(dataTypeInfo: PTypeInfo): string;
 const
-  CREATE_TEMPORARY_TABLE_TEMPLATE = 'CREATE TEMPORARY TABLE `%s` (%s)';
-  CREATE_TABLE_TEMPLATE = 'CREATE TABLE `%s` (%s)';
+  CREATE_TEMPORARY_TABLE_TEMPLATE = 'CREATE TEMPORARY TABLE %s (%s)';
+  CREATE_TABLE_TEMPLATE = 'CREATE TABLE %s (%s)';
 var
   _ctx: TRttiContext;
-  _rttiType: TRttiType;
-  _fieldsStr: string;
+  _columnDefinitions: string;
   _template: string;
 begin
   validateThatStringIsNotEmpty(_tableName, 'Table name cannot be empty');
-  _rttiType := _ctx.GetType(dataTypeInfo);
-  _fieldsStr := buildFieldDefinitionsFromType(_rttiType);
+  _columnDefinitions := getColumnDefinitions(_ctx.GetType(dataTypeInfo));
 
   if _tableType = TTableType.temporary then
   begin
@@ -159,158 +147,13 @@ begin
     _template := CREATE_TABLE_TEMPLATE;
   end;
 
-  Result := Format(_template, [_tableName, _fieldsStr]);
-end;
-
-function TDynamicTable.buildFieldDefinitionsFromType(rttiType: TRttiType): string;
-var
-  _result: string;
-begin
-  if rttiType.TypeKind = tkRecord then
-  begin
-    _result := buildFieldDefinitionsFromRecord(rttiType);
-  end
-  else if rttiType.TypeKind = tkClass then
-  begin
-    _result := buildFieldDefinitionsFromClass(rttiType);
-  end
-  else
-  begin
-    raise Exception.Create('Type must be a record or class');
-  end;
-
-  if _result = EMPTY_STRING then
-  begin
-    raise Exception.Create('No fields found in type');
-  end;
-
-  Result := _result;
-end;
-
-function TDynamicTable.buildFieldDefinitionsFromRecord(rttiType: TRttiType): string;
-var
-  _field: TRttiField;
-  _fields: TStringList;
-  _fieldName: string;
-  _fieldType: string;
-  _customName: string;
-  i: integer;
-begin
-  _fields := TStringList.Create;
-  try
-    for _field in rttiType.GetFields do
-    begin
-      if _field.GetAttribute<IgnoreAttribute> <> nil then
-      begin
-        Continue;
-      end;
-
-      _fieldName := _field.Name;
-      if _field.GetAttribute<CustomNameAttribute> <> nil then
-      begin
-        _customName := _field.GetAttribute<CustomNameAttribute>.Value;
-        _fieldName := _customName;
-      end;
-
-      _fieldType := mapToMySQLType(_field.FieldType);
-      _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
-    end;
-
-    Result := EMPTY_STRING;
-    for i := 0 to _fields.Count - 1 do
-    begin
-      if i > 0 then
-      begin
-        Result := Result + ', ';
-      end;
-      Result := Result + _fields[i];
-    end;
-  finally
-    FreeAndNil(_fields);
-  end;
-end;
-
-function TDynamicTable.buildFieldDefinitionsFromClass(rttiType: TRttiType): string;
-var
-  _field: TRttiField;
-  _prop: TRttiProperty;
-  _fields: TStringList;
-  _fieldName: string;
-  _fieldType: string;
-  _customName: string;
-  i: integer;
-begin
-  _fields := TStringList.Create;
-  try
-    for _field in (rttiType as TRttiInstanceType).GetFields do
-    begin
-      if not(_field.Visibility in [mvPublic, mvPublished]) then
-      begin
-        Continue;
-      end;
-
-      if _field.GetAttribute<IgnoreAttribute> <> nil then
-      begin
-        Continue;
-      end;
-
-      _fieldName := _field.Name;
-      if _field.GetAttribute<CustomNameAttribute> <> nil then
-      begin
-        _customName := _field.GetAttribute<CustomNameAttribute>.Value;
-        _fieldName := _customName;
-      end;
-
-      _fieldType := mapToMySQLType(_field.FieldType);
-      _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
-    end;
-
-    for _prop in (rttiType as TRttiInstanceType).GetProperties do
-    begin
-      if not(_prop.Visibility in [mvPublic, mvPublished]) then
-      begin
-        Continue;
-      end;
-
-      if not _prop.IsReadable then
-      begin
-        Continue;
-      end;
-
-      if _prop.GetAttribute<IgnoreAttribute> <> nil then
-      begin
-        Continue;
-      end;
-
-      _fieldName := _prop.Name;
-      if _prop.GetAttribute<CustomNameAttribute> <> nil then
-      begin
-        _customName := _prop.GetAttribute<CustomNameAttribute>.Value;
-        _fieldName := _customName;
-      end;
-
-      _fieldType := mapToMySQLType(_prop.PropertyType);
-      _fields.Add(Format('`%s` %s', [_fieldName, _fieldType]));
-    end;
-
-    Result := EMPTY_STRING;
-    for i := 0 to _fields.Count - 1 do
-    begin
-      if i > 0 then
-      begin
-        Result := Result + ', ';
-      end;
-      Result := Result + _fields[i];
-    end;
-  finally
-    FreeAndNil(_fields);
-  end;
+  Result := Format(_template, [getQuotedTableName(_tableName), _columnDefinitions]);
 end;
 
 function TDynamicTable.buildDropTableSQL: string;
 const
-  DROP_TEMPORARY_TABLE_TEMPLATE = 'DROP TEMPORARY TABLE `%s`';
-  DROP_TABLE_TEMPLATE = 'DROP TABLE `%s`';
+  DROP_TEMPORARY_TABLE_TEMPLATE = 'DROP TEMPORARY TABLE %s';
+  DROP_TABLE_TEMPLATE = 'DROP TABLE %s';
 var
   _template: string;
 begin
@@ -325,22 +168,13 @@ begin
     _template := DROP_TABLE_TEMPLATE;
   end;
 
-  Result := Format(_template, [_tableName]);
+  Result := Format(_template, [getQuotedTableName(_tableName)]);
 end;
 
 procedure TDynamicTable.executeCreateTable(createSQL: string);
 begin
   KLib.MySQL.Utils.executeQuery(createSQL, _connection);
   _isCreated := true;
-end;
-
-procedure TDynamicTable.insertDataIntoTable(dataTypeInfo: PTypeInfo; dataValues: TArray<TValue>);
-begin
-  if Length(dataValues) = 0 then
-  begin
-    raise Exception.Create('Data array cannot be empty');
-  end;
-  executeBatchInsert(dataValues, dataTypeInfo);
 end;
 
 procedure TDynamicTable.execute(selectQuery: string; tableName: string = EMPTY_STRING);
@@ -355,28 +189,27 @@ end;
 
 procedure TDynamicTable.execute<T>(data: TArray<T>; tableName: string = EMPTY_STRING);
 var
-  _dataAsValues: TArray<TValue>;
   _createSQL: string;
 begin
   drop;
   setOrGenerateTableName(tableName);
-  _dataAsValues := convertToTValueArray<T>(data);
   _createSQL := buildCreateTableSQL(TypeInfo(T));
   executeCreateTable(_createSQL);
-  insertDataIntoTable(TypeInfo(T), _dataAsValues);
+  TBatchInsert.into<T>(_connection, _tableName, data);
 end;
 
 procedure TDynamicTable.execute<T>(data: TList<T>; tableName: string = EMPTY_STRING);
 var
-  _dataAsValues: TArray<TValue>;
   _createSQL: string;
 begin
   drop;
   setOrGenerateTableName(tableName);
-  _dataAsValues := convertToTValueArray<T>(data);
   _createSQL := buildCreateTableSQL(TypeInfo(T));
   executeCreateTable(_createSQL);
-  insertDataIntoTable(TypeInfo(T), _dataAsValues);
+  if data <> nil then
+  begin
+    TBatchInsert.into<T>(_connection, _tableName, data.ToArray);
+  end;
 end;
 
 procedure TDynamicTable.drop;
@@ -388,318 +221,6 @@ begin
     _dropSQL := buildDropTableSQL;
     KLib.MySQL.Utils.executeQuery(_dropSQL, _connection);
     _isCreated := false;
-  end;
-end;
-
-class function TDynamicTable.convertToTValueArray<T>(data: TArray<T>): TArray<TValue>;
-var
-  _result: TArray<TValue>;
-  _value: TValue;
-  i: integer;
-begin
-  SetLength(_result, Length(data));
-  for i := 0 to High(data) do
-  begin
-    TValue.Make(@data[i], TypeInfo(T), _value);
-    _result[i] := _value;
-  end;
-  Result := _result;
-end;
-
-class function TDynamicTable.convertToTValueArray<T>(data: TList<T>): TArray<TValue>;
-var
-  _result: TArray<TValue>;
-  _value: TValue;
-  _item: T;
-  i: integer;
-begin
-  SetLength(_result, data.Count);
-  for i := 0 to data.Count - 1 do
-  begin
-    _item := data[i];
-    TValue.Make(@_item, TypeInfo(T), _value);
-    _result[i] := _value;
-  end;
-  Result := _result;
-end;
-
-function TDynamicTable.mapToMySQLType(rttiType: TRttiType): string;
-var
-  _result: string;
-begin
-  _result := 'TEXT';
-
-  case rttiType.TypeKind of
-    tkInteger, tkInt64:
-      _result := 'BIGINT';
-
-    tkFloat:
-      begin
-        if rttiType.Handle = TypeInfo(TDateTime) then
-        begin
-          _result := 'DATETIME';
-        end
-        else if rttiType.Handle = TypeInfo(TDate) then
-        begin
-          _result := 'DATE';
-        end
-        else
-        begin
-          _result := 'DOUBLE';
-        end;
-      end;
-
-    tkString, tkLString, tkWString, tkUString:
-      _result := 'TEXT';
-
-    tkEnumeration:
-      begin
-        if rttiType.Handle = TypeInfo(Boolean) then
-        begin
-          _result := 'TINYINT(1)';
-        end
-        else
-        begin
-          _result := 'VARCHAR(50)';
-        end;
-      end;
-
-    tkChar, tkWChar:
-      _result := 'CHAR(1)';
-
-    tkVariant:
-      _result := 'TEXT';
-
-    tkRecord, tkClass:
-      _result := 'TEXT';
-
-  else
-    _result := 'TEXT';
-  end;
-
-  Result := _result;
-end;
-
-function TDynamicTable.formatValueForSQL(value: TValue; fieldType: TRttiType): string;
-var
-  _result: string;
-  _dateTime: TDateTime;
-  _isNull: boolean;
-begin
-  _isNull := value.IsEmpty;
-
-  if _isNull then
-  begin
-    _result := 'NULL';
-  end
-  else
-  begin
-    case fieldType.TypeKind of
-      tkInteger, tkInt64:
-        _result := value.AsInteger.ToString;
-
-      tkFloat:
-        begin
-          if fieldType.Handle = TypeInfo(TDateTime) then
-          begin
-            _dateTime := value.AsType<TDateTime>;
-            _result := QuotedStr(FormatDateTime('yyyy-mm-dd hh:nn:ss', _dateTime));
-          end
-          else if fieldType.Handle = TypeInfo(TDate) then
-          begin
-            _dateTime := value.AsType<TDate>;
-            _result := QuotedStr(FormatDateTime('yyyy-mm-dd', _dateTime));
-          end
-          else
-          begin
-            _result := StringReplace(value.AsExtended.ToString, ',', '.', [rfReplaceAll]);
-          end;
-        end;
-
-      tkString, tkLString, tkWString, tkUString:
-        _result := QuotedStr(value.AsString);
-
-      tkEnumeration:
-        begin
-          if fieldType.Handle = TypeInfo(Boolean) then
-          begin
-            if value.AsBoolean then
-            begin
-              _result := '1';
-            end
-            else
-            begin
-              _result := '0';
-            end;
-          end
-          else
-          begin
-            _result := QuotedStr(value.ToString);
-          end;
-        end;
-
-      tkChar, tkWChar:
-        _result := QuotedStr(value.ToString);
-
-      tkVariant:
-        _result := QuotedStr(VarToStr(value.AsVariant));
-
-    else
-      _result := QuotedStr(value.ToString);
-    end;
-  end;
-
-  Result := _result;
-end;
-
-procedure TDynamicTable.executeBatchInsert(data: TArray<TValue>; dataTypeInfo: PTypeInfo);
-const
-  INSERT_TEMPLATE = 'INSERT INTO `%s` VALUES %s';
-  BATCH_SIZE = 1000;
-var
-  _ctx: TRttiContext;
-  _rttiType: TRttiType;
-  _field: TRttiField;
-  _prop: TRttiProperty;
-  _batchCount: integer;
-  _valuesList: TStringList;
-  _insertStatement: string;
-  _rowValues: TStringList;
-  _fieldValue: TValue;
-  _fieldValueStr: string;
-  _dataItem: TValue;
-  _recordPtr: Pointer;
-  _classInstance: TObject;
-  i: integer;
-  j: integer;
-begin
-  if Length(data) = 0 then
-  begin
-    Exit;
-  end;
-
-  _valuesList := TStringList.Create;
-  _rowValues := TStringList.Create;
-  try
-    _batchCount := 0;
-    _rttiType := _ctx.GetType(dataTypeInfo);
-
-    for i := 0 to High(data) do
-    begin
-      _dataItem := data[i];
-      _rowValues.Clear;
-
-      if _rttiType.TypeKind = tkRecord then
-      begin
-        _recordPtr := _dataItem.GetReferenceToRawData;
-
-        for _field in _rttiType.GetFields do
-        begin
-          if _field.GetAttribute<IgnoreAttribute> <> nil then
-          begin
-            Continue;
-          end;
-
-          _fieldValue := _field.GetValue(_recordPtr);
-          _fieldValueStr := formatValueForSQL(_fieldValue, _field.FieldType);
-          _rowValues.Add(_fieldValueStr);
-        end;
-      end
-      else if _rttiType.TypeKind = tkClass then
-      begin
-        _classInstance := _dataItem.AsObject;
-
-        if _classInstance = nil then
-        begin
-          Continue;
-        end;
-
-        for _field in (_rttiType as TRttiInstanceType).GetFields do
-        begin
-          if not(_field.Visibility in [mvPublic, mvPublished]) then
-          begin
-            Continue;
-          end;
-
-          if _field.GetAttribute<IgnoreAttribute> <> nil then
-          begin
-            Continue;
-          end;
-
-          try
-            _fieldValue := _field.GetValue(_classInstance);
-            _fieldValueStr := formatValueForSQL(_fieldValue, _field.FieldType);
-            _rowValues.Add(_fieldValueStr);
-          except
-            _rowValues.Add('NULL');
-          end;
-        end;
-
-        for _prop in (_rttiType as TRttiInstanceType).GetProperties do
-        begin
-          if not(_prop.Visibility in [mvPublic, mvPublished]) then
-          begin
-            Continue;
-          end;
-
-          if not _prop.IsReadable then
-          begin
-            Continue;
-          end;
-
-          if _prop.GetAttribute<IgnoreAttribute> <> nil then
-          begin
-            Continue;
-          end;
-
-          try
-            _fieldValue := _prop.GetValue(_classInstance);
-            _fieldValueStr := formatValueForSQL(_fieldValue, _prop.PropertyType);
-            _rowValues.Add(_fieldValueStr);
-          except
-            _rowValues.Add('NULL');
-          end;
-        end;
-      end;
-
-      if _rowValues.Count > 0 then
-      begin
-        _fieldValueStr := '';
-        for j := 0 to _rowValues.Count - 1 do
-        begin
-          if j > 0 then
-          begin
-            _fieldValueStr := _fieldValueStr + ', ';
-          end;
-          _fieldValueStr := _fieldValueStr + _rowValues[j];
-        end;
-        _valuesList.Add('(' + _fieldValueStr + ')');
-        _batchCount := _batchCount + 1;
-      end;
-
-      if (_batchCount >= BATCH_SIZE) or (i = High(data)) then
-      begin
-        if _valuesList.Count > 0 then
-        begin
-          _fieldValueStr := '';
-          for j := 0 to _valuesList.Count - 1 do
-          begin
-            if j > 0 then
-            begin
-              _fieldValueStr := _fieldValueStr + ', ';
-            end;
-            _fieldValueStr := _fieldValueStr + _valuesList[j];
-          end;
-          _insertStatement := Format(INSERT_TEMPLATE, [_tableName, _fieldValueStr]);
-          KLib.MySQL.Utils.executeQuery(_insertStatement, _connection);
-          _valuesList.Clear;
-          _batchCount := 0;
-        end;
-      end;
-    end;
-  finally
-    FreeAndNil(_valuesList);
-    FreeAndNil(_rowValues);
   end;
 end;
 
