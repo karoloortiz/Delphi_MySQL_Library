@@ -100,12 +100,12 @@ procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: str
 procedure exportCSV(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: string; options: TCsvExportOptions; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 
-procedure executeScript(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-procedure executeScript(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeScript(scriptSQL: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+procedure executeScript(scriptSQL: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-procedure executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-procedure executeQuery(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
+function executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
+function executeQuery(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
+function executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 
@@ -115,8 +115,8 @@ function getSQLStatementWithJoinStmtInserted(sqlStatement: string; joinFieldStmt
 function getSQLStatementWithWhereStmtInserted(sqlStatement: string; whereFieldStmt: string): string;
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 
-function checkMySQLCredentials(connectionString: string): boolean; overload;
-function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials): boolean; overload;
+function checkMySQLCredentials(connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): boolean; overload;
+function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): boolean; overload;
 function checkRequiredMySQLProperties(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 
 function parseConnectionStringToCredentials(connectionString: string): TCredentials;
@@ -765,7 +765,15 @@ begin
   end;
 end;
 
-procedure executeScript(sqlStatement: string;
+procedure executeScript(scriptSQL: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  executeScript(scriptSQL, _credentials, isRaiseExceptionEnabled);
+end;
+
+procedure executeScript(scriptSQL: string;
   credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _connection: TConnection;
@@ -773,69 +781,70 @@ begin
   _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
-    executeScript(sqlStatement, _connection, isRaiseExceptionEnabled);
+    executeScript(scriptSQL, _connection, isRaiseExceptionEnabled);
     _connection.Connected := false;
   finally
     FreeAndNil(_connection);
   end;
 end;
 
-function findDelimiterOutsideQuotes(sql: string; delimiter: string): integer;
-var
-  i: integer;
-  _inQuote: boolean;
-  _inLineComment: boolean;
-  _delimLen: integer;
-  _sqlLen: integer;
-  _found: boolean;
-begin
-  _inQuote := false;
-  _inLineComment := false;
-  _delimLen := Length(delimiter);
-  _sqlLen := Length(sql);
-  _found := false;
-  i := 1;
-  while (i <= _sqlLen) and (not _found) do
-  begin
-    if _inLineComment then
-    begin
-      if sql[i] = #10 then
-        _inLineComment := false;
-    end
-    else if _inQuote then
-    begin
-      if sql[i] = '\' then
-      begin
-        if i < _sqlLen then
-          i := i + 1;
-      end
-      else if sql[i] = '''' then
-      begin
-        if (i < _sqlLen) and (sql[i + 1] = '''') then
-          i := i + 1
-        else
-          _inQuote := false;
-      end;
-    end
-    else
-    begin
-      if (i + 1 <= _sqlLen) and (sql[i] = '-') and (sql[i + 1] = '-') then
-        _inLineComment := true
-      else if sql[i] = '''' then
-        _inQuote := true
-      else if Copy(sql, i, _delimLen) = delimiter then
-        _found := true;
-    end;
-    if not _found then
-      i := i + 1;
-  end;
-  if _found then
-    Result := i
-  else
-    Result := 0;
-end;
-
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+
+  function findDelimiterOutsideQuotes(sql: string; delimiter: string): integer;
+  var
+    i: integer;
+    _inQuote: boolean;
+    _inLineComment: boolean;
+    _delimLen: integer;
+    _sqlLen: integer;
+    _found: boolean;
+  begin
+    _inQuote := false;
+    _inLineComment := false;
+    _delimLen := Length(delimiter);
+    _sqlLen := Length(sql);
+    _found := false;
+    i := 1;
+    while (i <= _sqlLen) and (not _found) do
+    begin
+      if _inLineComment then
+      begin
+        if sql[i] = #10 then
+          _inLineComment := false;
+      end
+      else if _inQuote then
+      begin
+        if sql[i] = '\' then
+        begin
+          if i < _sqlLen then
+            i := i + 1;
+        end
+        else if sql[i] = '''' then
+        begin
+          if (i < _sqlLen) and (sql[i + 1] = '''') then
+            i := i + 1
+          else
+            _inQuote := false;
+        end;
+      end
+      else
+      begin
+        if (i + 1 <= _sqlLen) and (sql[i] = '-') and (sql[i + 1] = '-') then
+          _inLineComment := true
+        else if sql[i] = '''' then
+          _inQuote := true
+        else if Copy(sql, i, _delimLen) = delimiter then
+          _found := true;
+      end;
+      if not _found then
+        i := i + 1;
+    end;
+    if _found then
+      Result := i
+    else
+      Result := 0;
+  end;
+
 const
   DEFAULT_DELIMITER = ';';
   DELIMITER_STMT = 'DELIMITER ';
@@ -874,29 +883,48 @@ begin
   end;
 end;
 
-procedure executeQuery(sqlStatement: string;
-  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+function executeQuery(sqlStatement: string;
+  connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := executeQuery(sqlStatement, _credentials, isRaiseExceptionEnabled);
+end;
+
+function executeQuery(sqlStatement: string;
+  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
 var
   _connection: TConnection;
 begin
   _connection := getValidTConnection(credentials);
   try
     _connection.Connected := true;
-    executeQuery(sqlStatement, _connection, isRaiseExceptionEnabled);
+    Result := executeQuery(sqlStatement, _connection, isRaiseExceptionEnabled);
     _connection.Connected := false;
   finally
     FreeAndNil(_connection);
   end;
 end;
 
-procedure executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+function executeQuery(sqlStatement: string;
+  connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
 var
   _query: TQuery;
+  _result: Variant;
 begin
+  _result := Unassigned;
+
   _query := getTQuery(connection, sqlStatement);
   try
     try
       _query.ExecSQL;
+{$ifdef KLIB_MYSQL_MYDAC}
+      _result := _query.InsertId;
+{$endif}
+{$ifdef KLIB_MYSQL_FIREDAC}
+      _result := connection.GetLastAutoGenValue('');
+{$endif}
     except
       on E: Exception do
       begin
@@ -911,6 +939,8 @@ begin
       FreeAndNil(_query);
     end;
   end;
+
+  Result := _result;
 end;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
@@ -1215,7 +1245,17 @@ begin
   Result := sqlText;
 end;
 
-function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
+function checkMySQLCredentials(connectionString: string;
+  isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): boolean;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := checkMySQLCredentials(_credentials, isRaiseExceptionEnabled);
+end;
+
+function checkMySQLCredentials(credentials: KLib.MySQL.Credentials.TCredentials;
+  isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): boolean;
 var
   _result: boolean;
 
@@ -1228,6 +1268,10 @@ begin
   except
     on E: Exception do
     begin
+      if isRaiseExceptionEnabled then
+      begin
+        raise Exception.Create(E.Message);
+      end;
       _result := false;
     end;
   end;
@@ -1335,36 +1379,12 @@ begin
   Result := _result;
 end;
 
-function checkMySQLCredentials(connectionString: string): boolean;
-var
-  _credentials: TCredentials;
-begin
-  _credentials := parseConnectionStringToCredentials(connectionString);
-  Result := checkMySQLCredentials(_credentials);
-end;
-
 procedure flushPrivileges(connectionString: string);
 var
   _credentials: TCredentials;
 begin
   _credentials := parseConnectionStringToCredentials(connectionString);
   flushPrivileges(_credentials);
-end;
-
-procedure executeScript(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
-var
-  _credentials: TCredentials;
-begin
-  _credentials := parseConnectionStringToCredentials(connectionString);
-  executeScript(sqlStatement, _credentials, isRaiseExceptionEnabled);
-end;
-
-procedure executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
-var
-  _credentials: TCredentials;
-begin
-  _credentials := parseConnectionStringToCredentials(connectionString);
-  executeQuery(sqlStatement, _credentials, isRaiseExceptionEnabled);
 end;
 
 function getFirstFieldListFromSQLStatement(sqlStatement: string; connectionString: string): Variant;

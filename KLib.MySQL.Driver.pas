@@ -47,26 +47,26 @@ interface
 //
 //##############################################################################
 
-{$ifndef KLIB_MYSQL_FIREDAC}
-{$ifndef KLIB_MYSQL_MYDAC}
-{$define KLIB_MYSQL_FIREDAC}  // FireDAC default
-{$endif}
-{$endif}
+{$IFNDEF KLIB_MYSQL_FIREDAC}
+{$IFNDEF KLIB_MYSQL_MYDAC}
+{$DEFINE KLIB_MYSQL_FIREDAC}  // FireDAC default
+{$ENDIF}
+{$ENDIF}
 
-{$ifndef KLIB_GLOBALS}
-{$include KLib.MySQL.inc}
-{$ifend}
+{$IFNDEF KLIB_GLOBALS}
+{$INCLUDE KLib.MySQL.inc}
+{$IFEND}
 
 
 uses
   //----------------------------------------------------------------------------
-{$ifdef KLIB_MYSQL_FIREDAC}
+{$IFDEF KLIB_MYSQL_FIREDAC}
   KLib.MySQL.FireDac,
-{$else}
-{$ifdef KLIB_MYSQL_MYDAC}
+{$ELSE}
+{$IFDEF KLIB_MYSQL_MYDAC}
   KLib.MySQL.MyDAC,
-{$ifend}
-{$ifend}
+{$IFEND}
+{$IFEND}
   //----------------------------------------------------------------------------
   KLib.Constants, KLib.Types,
   KLib.MySQL.Info, KLib.MySQL.Credentials,
@@ -115,7 +115,7 @@ implementation
 uses
   Data.DB,
   Klib.Windows, KLib.Utils, KLib.Csv, KLib.FileSystem,
-  KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.Resources;
+  KLib.MySQL.Utils, KLib.MySQL.Validate;
 
 function TConnection.checkIfMysqlVersionIs_v_8: boolean;
 begin
@@ -272,8 +272,6 @@ begin
   Result := connection;
 end;
 
-procedure getCaching_sha2_passwordDLLFromResourceIfNotExists(); forward;
-
 function getTConnection(connectionString: string): TConnection;
 var
   _credentials: TCredentials;
@@ -286,26 +284,9 @@ function getTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConn
 var
   connection: T_Connection;
 begin
-  if credentials.use_caching_sha2_password_dll then
-  begin
-    getCaching_sha2_passwordDLLFromResourceIfNotExists();
-  end;
   connection := _getMySQLTConnection(credentials);
 
   Result := TConnection(connection);
-end;
-
-procedure getCaching_sha2_passwordDLLFromResourceIfNotExists();
-const
-  FILENAME_DLL = 'caching_sha2_password.dll';
-var
-  _path_dll: string;
-begin
-  _path_dll := getCombinedPathWithCurrentDir(FILENAME_DLL);
-  if not FileExists(_path_dll) then
-  begin
-    getResourceAsFile(RESOURCE_CACHING_SHA2_PASSWORD, _path_dll);
-  end;
 end;
 
 end.

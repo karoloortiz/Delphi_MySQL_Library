@@ -41,10 +41,10 @@ interface
 uses
   KLib.MySQL.Credentials;
 
-procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .'); overload;
-procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.0 .'); overload;
-procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .'); overload;
-procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.0 .'); overload;
+procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.'); overload;
+procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.'); overload;
+procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.'); overload;
+procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.'); overload;
 procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.'); overload;
 procedure validateMySQLCredentials(connectionString: string; errMsg: string = 'Invalid MySQL credentials.'); overload;
 procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
@@ -52,42 +52,11 @@ procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: str
 implementation
 
 uses
-  KLib.MySQL.Utils,
-  System.SysUtils;
+  System.SysUtils,
+  KLib.Constants,
+  KLib.MySQL.Utils;
 
-procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.0 .');
-begin
-  if not checkIfMysqlVersionIs_v_8(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
-end;
-
-procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.0 .');
-begin
-  if checkIfMysqlVersionIs_v_8(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
-end;
-
-procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.');
-begin
-  if not checkMySQLCredentials(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
-end;
-
-procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
-begin
-  if not checkRequiredMySQLProperties(credentials) then
-  begin
-    raise Exception.Create(errMsg);
-  end;
-end;
-
-procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.0 .');
+procedure validateThatMysqlVersionIs_v_8(connectionString: string; errMsg: string = 'The MySQL version is not 8.');
 var
   _credentials: TCredentials;
 begin
@@ -95,7 +64,23 @@ begin
   validateThatMysqlVersionIs_v_8(_credentials, errMsg);
 end;
 
-procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.0 .');
+procedure validateThatMysqlVersionIs_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is not 8.');
+begin
+  if not checkIfMysqlVersionIs_v_8(credentials) then
+  begin
+    raise Exception.Create(errMsg);
+  end;
+end;
+
+procedure validateThatMysqlVersionIsNot_v_8(credentials: TCredentials; errMsg: string = 'The MySQL version is 8.');
+begin
+  if checkIfMysqlVersionIs_v_8(credentials) then
+  begin
+    raise Exception.Create(errMsg);
+  end;
+end;
+
+procedure validateThatMysqlVersionIsNot_v_8(connectionString: string; errMsg: string = 'The MySQL version is 8.');
 var
   _credentials: TCredentials;
 begin
@@ -109,6 +94,36 @@ var
 begin
   _credentials := parseConnectionStringToCredentials(connectionString);
   validateMySQLCredentials(_credentials, errMsg);
+end;
+
+procedure validateMySQLCredentials(credentials: TCredentials; errMsg: string = 'Invalid MySQL credentials.');
+var
+  _isValid: boolean;
+  _errorMessage: string;
+begin
+  _errorMessage := errMsg;
+  _isValid := false;
+  try
+    _isValid := checkMySQLCredentials(credentials, RAISE_EXCEPTION)
+  except
+    on E: Exception do
+    begin
+      _errorMessage := _errorMessage + ' ' + E.Message;
+    end;
+  end;
+
+  if not _isValid then
+  begin
+    raise Exception.Create(_errorMessage);
+  end;
+end;
+
+procedure validateRequiredMySQLProperties(credentials: TCredentials; errMsg: string = 'MySQL credentials were not fully specified.');
+begin
+  if not checkRequiredMySQLProperties(credentials) then
+  begin
+    raise Exception.Create(errMsg);
+  end;
 end;
 
 end.

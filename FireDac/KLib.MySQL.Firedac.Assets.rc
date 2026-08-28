@@ -1,2 +1,4 @@
-FIREDAC_LIBMARIADB DLL assets/libmariadb.dll
-FIREDAC_LIBMYSQL DLL assets/libmysql.dll
+FIREDAC_LIBMARIADB_X86 DLL assets/win32/libmariadb.dll
+FIREDAC_CACHING_SHA2_PASSWORD_X86 DLL assets/win32/caching_sha2_password.dll
+FIREDAC_LIBMARIADB_X64 DLL assets/win64/libmariadb.dll
+FIREDAC_CACHING_SHA2_PASSWORD_X64 DLL assets/win64/caching_sha2_password.dll

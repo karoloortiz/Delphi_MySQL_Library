@@ -1,2 +1,1 @@
-FireDac/assets/*.* filter=lfs diff=lfs merge=lfs -text
-assets/caching_sha2_password.dll filter=lfs diff=lfs merge=lfs -text
+FireDac/assets/**/*.dll filter=lfs diff=lfs merge=lfs -text

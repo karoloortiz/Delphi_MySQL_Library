@@ -45,8 +45,13 @@ uses
   KLib.Types, KLib.Constants;
 
 const
-  RESOURCE_LIBMARIADB: TResource = (name: 'FIREDAC_LIBMARIADB'; _type: DLL_TYPE);
-  RESOURCE_LIBMYSQL: TResource = (name: 'FIREDAC_LIBMYSQL'; _type: DLL_TYPE);
+{$ifdef WIN32}
+  RESOURCE_LIBMARIADB: TResource = (name: 'FIREDAC_LIBMARIADB_X86'; _type: DLL_TYPE);
+  RESOURCE_CACHING_SHA2_PASSWORD: TResource = (name: 'FIREDAC_CACHING_SHA2_PASSWORD_X86'; _type: DLL_TYPE);
+{$else IFDEF WIN64}
+  RESOURCE_LIBMARIADB: TResource = (name: 'FIREDAC_LIBMARIADB_X64'; _type: DLL_TYPE);
+  RESOURCE_CACHING_SHA2_PASSWORD: TResource = (name: 'FIREDAC_CACHING_SHA2_PASSWORD_X64'; _type: DLL_TYPE);
+{$endif}
 
 implementation
 

@@ -50,6 +50,7 @@ type
 
   T_Connection = class(FireDAC.Comp.Client.TFDConnection)
   private
+    isSSLUsed: boolean;
     function _get_database: string;
     procedure _set_database(value: string);
     function _get_port: integer;
@@ -58,6 +59,8 @@ type
     procedure _set_pooled(value: boolean);
     function _get_isAutoReconnectEnabled: boolean;
     procedure _set_isAutoReconnectEnabled(value: boolean);
+  protected
+    procedure DoConnect; override;
   public
     property database: string read _get_database write _set_database;
     property port: integer read _get_port write _set_port;
@@ -80,8 +83,15 @@ uses
   FireDAC.Stan.Def, FireDAC.Stan.Async,
   FireDac.DApt,
   FireDAC.Phys.MySQLDef, FireDAC.Phys.MySQL,
+  Winapi.Windows,
   Klib.Utils, KLib.Windows, KLib.FileSystem,
   KLib.MySQL.Utils, KLib.MySQL.Validate, KLib.MySQL.FireDac.Resources;
+
+var
+  driverLink: TFDPhysMySQLDriverLink = nil;
+
+procedure setMariaDBPeerVerification(isEnabled: boolean); forward;
+procedure getCachingSha2PasswordDLLFromResourceIfNotExists(); forward;
 
 destructor T_Query.Destroy;
 begin
@@ -94,18 +104,26 @@ begin
 
   LoginPrompt := false;
   DriverName := 'MySQL';
-  with Params do
+  Params.Values['Server'] := credentials.server;
+  Params.Values['User_Name'] := credentials.credentials.username;
+  Params.Values['Password'] := credentials.credentials.password;
+  Params.Values['Port'] := IntToStr(credentials.port);
+  Params.Values['Database'] := credentials.database;
+  Params.Values['CharacterSet'] := CHARSET_NAMES[credentials.charset];
+  isSSLUsed := credentials.useSSL;
+  if (isSSLUsed) then
   begin
-    Values['Server'] := credentials.server;
-    Values['User_Name'] := credentials.credentials.username;
-    Values['Password'] := credentials.credentials.password;
-    Values['Port'] := IntToStr(credentials.port);
-    Values['Database'] := credentials.database;
-    Values['CharacterSet'] := CHARSET_NAMES[credentials.charset];
-    if (credentials.useSSL) then
-    begin
-      Values['UseSSL'] := 'True';
-    end;
+    Params.Values['UseSSL'] := 'True';
+  end;
+end;
+
+procedure T_Connection.DoConnect;
+begin
+  setMariaDBPeerVerification(isSSLUsed);
+  try
+    inherited;
+  finally
+    setMariaDBPeerVerification(true);
   end;
 end;
 
@@ -160,32 +178,65 @@ var
 begin
   validateRequiredMySQLProperties(credentials);
   getMySQLClientDLLFromResourceIfNotExists();
+  if (credentials.use_caching_sha2_password_dll) then
+  begin
+    getCachingSha2PasswordDLLFromResourceIfNotExists();
+  end;
   connection := T_Connection.Create(credentials);
 
   Result := connection;
 end;
 
+//Since MariaDB Connector/C 3.4 TLS is enforced and the server certificate is verified on every non-local connection.
+procedure setMariaDBPeerVerification(isEnabled: boolean);
 const
-  FILENAME_LIBMARIAB = 'libmariadb.dll';
-  FILENAME_LIBMYSQL = 'libmysql.dll';
+  ENV_VAR_MARIADB_TLS_DISABLE_PEER_VERIFICATION = 'MARIADB_TLS_DISABLE_PEER_VERIFICATION';
+var
+  _value: PChar;
+begin
+  if (isEnabled) then
+  begin
+    _value := nil;
+  end
+  else
+  begin
+    _value := '1';
+  end;
+  SetEnvironmentVariable(ENV_VAR_MARIADB_TLS_DISABLE_PEER_VERIFICATION, _value);
+end;
+
+const
+  FILENAME_LIBMARIADB = 'libmariadb.dll';
 
 procedure getMySQLClientDLLFromResourceIfNotExists();
 var
-  _path_dll: string;
+  _pathLibmariadb: string;
 begin
-{$ifdef WIN32}
-  _path_dll := getCombinedPathWithCurrentDir(FILENAME_LIBMYSQL);
-  if not FileExists(_path_dll) then
+  _pathLibmariadb := getCombinedPathWithCurrentDir(FILENAME_LIBMARIADB);
+  if (not FileExists(_pathLibmariadb)) then
   begin
-    getResourceAsFile(RESOURCE_LIBMYSQL, _path_dll);
+    getResourceAsFile(RESOURCE_LIBMARIADB, _pathLibmariadb);
   end;
-{$else IFDEF WIN64}
-  _path_dll := getCombinedPathWithCurrentDir(FILENAME_LIBMARIAB);
-  if not FileExists(_path_dll) then
+
+  if (driverLink = nil) then
   begin
-    getResourceAsFile(RESOURCE_LIBMARIADB, _path_dll);
+    driverLink := TFDPhysMySQLDriverLink.Create(nil);
   end;
-{$endif}
+  driverLink.VendorLib := _pathLibmariadb;
+end;
+
+//The caching_sha2_password plugin is dynamic in MariaDB Connector/C, libmariadb loads it by name from the exe dir.
+procedure getCachingSha2PasswordDLLFromResourceIfNotExists();
+const
+  FILENAME_CACHING_SHA2_PASSWORD = 'caching_sha2_password.dll';
+var
+  _pathCachingSha2Password: string;
+begin
+  _pathCachingSha2Password := getCombinedPathWithCurrentDir(FILENAME_CACHING_SHA2_PASSWORD);
+  if (not FileExists(_pathCachingSha2Password)) then
+  begin
+    getResourceAsFile(RESOURCE_CACHING_SHA2_PASSWORD, _pathCachingSha2Password);
+  end;
 end;
 
 //TODO UNLOAD DLL
@@ -203,5 +254,11 @@ end;
 //  deleteFileIfExists(_path_libmariadb);
 //{$endif}
 //end;
+
+initialization
+
+finalization
+
+FreeAndNil(driverLink);
 
 end.
