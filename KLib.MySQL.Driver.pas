@@ -47,26 +47,26 @@ interface
 //
 //##############################################################################
 
-{$IFNDEF KLIB_MYSQL_FIREDAC}
-{$IFNDEF KLIB_MYSQL_MYDAC}
-{$DEFINE KLIB_MYSQL_FIREDAC}  // FireDAC default
-{$ENDIF}
-{$ENDIF}
+{$ifndef KLIB_MYSQL_FIREDAC}
+{$ifndef KLIB_MYSQL_MYDAC}
+{$define KLIB_MYSQL_FIREDAC}  // FireDAC default
+{$endif}
+{$endif}
 
-{$IFNDEF KLIB_GLOBALS}
-{$INCLUDE KLib.MySQL.inc}
-{$IFEND}
+{$ifndef KLIB_GLOBALS}
+{$include KLib.MySQL.inc}
+{$ifend}
 
 
 uses
   //----------------------------------------------------------------------------
-{$IFDEF KLIB_MYSQL_FIREDAC}
+{$ifdef KLIB_MYSQL_FIREDAC}
   KLib.MySQL.FireDac,
-{$ELSE}
-{$IFDEF KLIB_MYSQL_MYDAC}
+{$else}
+{$ifdef KLIB_MYSQL_MYDAC}
   KLib.MySQL.MyDAC,
-{$IFEND}
-{$IFEND}
+{$ifend}
+{$ifend}
   //----------------------------------------------------------------------------
   KLib.Constants, KLib.Types,
   KLib.MySQL.Info, KLib.MySQL.Credentials,
@@ -78,6 +78,7 @@ type
     procedure refreshKeepingPosition;
     procedure exportToCsv(fileName: string); overload; virtual;
     procedure exportToCsv(fileName: string; options: TCsvExportOptions); overload; virtual;
+    function getLastInsertId: Int64;
     destructor Destroy; override;
   end;
 
@@ -97,6 +98,7 @@ type
     procedure executeQuery(sqlStatement: string);
 
     function getACopyConnection: TConnection;
+    function getLastInsertId: Int64;
     destructor Destroy; override;
   end;
 
@@ -113,9 +115,10 @@ function getTConnection(credentials: KLib.MySQL.Credentials.TCredentials): TConn
 implementation
 
 uses
+  System.Variants,
   Data.DB,
   Klib.Windows, KLib.Utils, KLib.Csv, KLib.FileSystem,
-  KLib.MySQL.Utils, KLib.MySQL.Validate;
+  KLib.MySQL.Utils;
 
 function TConnection.checkIfMysqlVersionIs_v_8: boolean;
 begin
@@ -167,6 +170,28 @@ begin
   KLib.MySQL.Utils.executeQuery(sqlStatement, Self);
 end;
 
+//FireDAC returns Null when the last statement generated no AUTO_INCREMENT value: it is normalized to 0.
+function TConnection.getLastInsertId: Int64;
+var
+  _result: int64;
+{$ifdef KLIB_MYSQL_FIREDAC}
+  _lastAutoGenValue: Variant;
+{$endif}
+begin
+  _result := 0;
+{$ifdef KLIB_MYSQL_FIREDAC}
+  _lastAutoGenValue := GetLastAutoGenValue('');
+  if (not VarIsNull(_lastAutoGenValue)) then
+  begin
+    _result := _lastAutoGenValue;
+  end;
+{$else}
+  _result := getFirstFieldFromSQLStatement('SELECT LAST_INSERT_ID()');
+{$endif}
+
+  Result := _result;
+end;
+
 function TConnection.getACopyConnection: TConnection;
 var
   connection: TConnection;
@@ -204,6 +229,19 @@ begin
   end;
 
   exportDatasetToCSV(Self, fileName, options);
+end;
+
+function TQuery.getLastInsertId: Int64;
+var
+  _result: int64;
+begin
+{$ifdef KLIB_MYSQL_FIREDAC}
+  _result := TConnection(Connection).getLastInsertId;
+{$else}
+  _result := InsertId;
+{$endif}
+
+  Result := _result;
 end;
 
 destructor TQuery.Destroy;
@@ -266,8 +304,14 @@ function getValidTConnection(credentials: KLib.MySQL.Credentials.TCredentials): 
 var
   connection: TConnection;
 begin
-  validateMySQLCredentials(credentials);
   connection := getTConnection(credentials);
+  try
+    connection.Connected := true;
+    connection.Connected := false;
+  except
+    FreeAndNil(connection);
+    raise;
+  end;
 
   Result := connection;
 end;

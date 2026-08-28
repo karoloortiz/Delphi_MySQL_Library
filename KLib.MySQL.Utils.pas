@@ -36,6 +36,16 @@
 
 unit KLib.MySQL.Utils;
 
+{$IFNDEF KLIB_MYSQL_FIREDAC}
+{$IFNDEF KLIB_MYSQL_MYDAC}
+{$DEFINE KLIB_MYSQL_FIREDAC}  // FireDAC default
+{$ENDIF}
+{$ENDIF}
+
+{$IFNDEF KLIB_GLOBALS}
+{$INCLUDE KLib.MySQL.inc}
+{$IFEND}
+
 interface
 
 uses
@@ -103,9 +113,9 @@ procedure exportCSV(sqlStatement: string; connection: TConnection; fileName: str
 procedure executeScript(scriptSQL: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(scriptSQL: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
 procedure executeScript(scriptSQL: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION); overload;
-function executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
-function executeQuery(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
-function executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant; overload;
+function executeQuery(sqlStatement: string; connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64; overload;
+function executeQuery(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64; overload;
+function executeQuery(sqlStatement: string; connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64; overload;
 
 procedure refreshQueryKeepingPosition(query: TQuery);
 
@@ -884,7 +894,7 @@ begin
 end;
 
 function executeQuery(sqlStatement: string;
-  connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
+  connectionString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64;
 var
   _credentials: TCredentials;
 begin
@@ -893,7 +903,7 @@ begin
 end;
 
 function executeQuery(sqlStatement: string;
-  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
+  credentials: KLib.MySQL.Credentials.TCredentials; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64;
 var
   _connection: TConnection;
 begin
@@ -907,37 +917,36 @@ begin
   end;
 end;
 
+//Returns -1 when the statement failed and isRaiseExceptionEnabled is disabled,
+//0 when it succeeded without generating an AUTO_INCREMENT value.
 function executeQuery(sqlStatement: string;
-  connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Variant;
+  connection: TConnection; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): Int64;
 var
+  _result: Int64;
+
   _query: TQuery;
-  _result: Variant;
+  _isExecuted: boolean;
 begin
-  _result := Unassigned;
+  _result := -1;
+  _isExecuted := false;
 
   _query := getTQuery(connection, sqlStatement);
   try
     try
       _query.ExecSQL;
-{$ifdef KLIB_MYSQL_MYDAC}
-      _result := _query.InsertId;
-{$endif}
-{$ifdef KLIB_MYSQL_FIREDAC}
-      _result := connection.GetLastAutoGenValue('');
-{$endif}
+      _isExecuted := true;
     except
-      on E: Exception do
+      if isRaiseExceptionEnabled then
       begin
-        if isRaiseExceptionEnabled then
-        begin
-          raise Exception.Create('Execute query: ' + e.Message);
-        end;
+        raise;
       end;
     end;
-  finally
+    if (_isExecuted) then
     begin
-      FreeAndNil(_query);
+      _result := _query.getLastInsertId;
     end;
+  finally
+    FreeAndNil(_query);
   end;
 
   Result := _result;
@@ -1261,22 +1270,23 @@ var
 
   _connection: TConnection;
 begin
+  _result := false;
+
   _connection := getTConnection(credentials);
   try
-    _connection.Connected := true;
-    _result := true;
-  except
-    on E: Exception do
-    begin
+    try
+      _connection.Connected := true;
+      _connection.Connected := false;
+      _result := true;
+    except
       if isRaiseExceptionEnabled then
       begin
-        raise Exception.Create(E.Message);
+        raise;
       end;
-      _result := false;
     end;
+  finally
+    FreeAndNil(_connection);
   end;
-  _connection.Connected := false;
-  _connection.Free;
 
   Result := _result;
 end;
