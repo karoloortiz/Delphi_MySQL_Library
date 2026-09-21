@@ -96,6 +96,8 @@ function getFirstFieldFromSQLStatement(sqlStatement: string; connectionString: s
 function getFirstFieldFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): Variant; overload;
 function getFirstFieldFromSQLStatement(sqlStatement: string; connection: TConnection): Variant; overload;
 
+function getRecordCountFromTableName(tableName: string; credentials: KLib.MySQL.Credentials.TCredentials): integer; overload;
+function getRecordCountFromTableName(tableName: string; connection: TConnection): integer; overload;
 function getRecordCountFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): integer; overload;
 function getRecordCountFromSQLStatement(sqlStatement: string; connection: TConnection): integer; overload;
 
@@ -634,6 +636,40 @@ begin
   Result := fieldResult;
 end;
 
+function getRecordCountFromTableName(tableName: string; credentials: KLib.MySQL.Credentials.TCredentials): integer; overload;
+var
+  recordCount: integer;
+
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    recordCount := getRecordCountFromTableName(tableName, _connection);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := recordCount;
+end;
+
+function getRecordCountFromTableName(tableName: string; connection: TConnection): integer; overload;
+const
+  SELECT_COUNT =
+    'SELECT COUNT(1) FROM :tableName';
+var
+  recordCount: integer;
+
+  _sqlStatement: sqlstring;
+begin
+  _sqlStatement := SELECT_COUNT;
+  _sqlStatement.paramByNameAsString('tableName', tableName);
+  recordCount:= getFirstFieldFromSQLStatement(_sqlStatement, connection);
+
+  Result := recordCount;
+end;
+
 function getRecordCountFromSQLStatement(sqlStatement: string;
   credentials: KLib.MySQL.Credentials.TCredentials): integer;
 var
@@ -679,11 +715,11 @@ const
     'FROM' + sLineBreak +
     PARAM_TABLENAME;
 var
-  _queryStmt: sqlstring;
+  _sqlStatement: sqlstring;
 begin
-  _queryStmt := DELETE_FROM_WHERE_PARAM_TABLENAME;
-  _queryStmt.setParamAsString(PARAM_TABLENAME, tableName);
-  executeQuery(_queryStmt, connection);
+  _sqlStatement := DELETE_FROM_WHERE_PARAM_TABLENAME;
+  _sqlStatement.setParamAsString(PARAM_TABLENAME, tableName);
+  executeQuery(_sqlStatement, connection);
 end;
 
 procedure flushPrivileges(credentials: KLib.MySQL.Credentials.TCredentials);
@@ -1128,13 +1164,13 @@ end;
 
 function getSQLStatementFromTQuery(query: TQuery; paramsFulfilled: boolean = false): string;
 var
-  sqlText: sqlstring;
+  sqlStatement: sqlstring;
 
   i: integer;
   _paramName: string;
   _paramValue: Variant;
 begin
-  sqlText := query.SQL.Text;
+  sqlStatement := query.SQL.Text;
   if paramsFulfilled then
   begin
     for i := 0 to query.Params.Count - 1 do
@@ -1146,27 +1182,27 @@ begin
         ftUnknown:
           ;
         ftString:
-          sqlText.paramByNameAsString(_paramName, string(_paramValue), false);
+          sqlStatement.paramByNameAsString(_paramName, string(_paramValue), false);
         ftSmallint:
-          sqlText.paramByNameAsInteger(_paramName, _paramValue);
+          sqlStatement.paramByNameAsInteger(_paramName, _paramValue);
         ftInteger:
-          sqlText.paramByNameAsInteger(_paramName, _paramValue);
+          sqlStatement.paramByNameAsInteger(_paramName, _paramValue);
         ftWord:
           ;
         ftBoolean:
           ;
         ftFloat:
-          sqlText.paramByNameAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
+          sqlStatement.paramByNameAsFloat(_paramName, _paramValue, MYSQL_DECIMAL_SEPARATOR);
         ftCurrency:
           ;
         ftBCD:
           ;
         ftDate:
-          sqlText.paramByNameAsDate(_paramName, _paramValue);
+          sqlStatement.paramByNameAsDate(_paramName, _paramValue);
         ftTime:
-          sqlText.paramByNameAsDateTime(_paramName, _paramValue);
+          sqlStatement.paramByNameAsDateTime(_paramName, _paramValue);
         ftDateTime:
-          sqlText.paramByNameAsDateTime(_paramName, _paramValue);
+          sqlStatement.paramByNameAsDateTime(_paramName, _paramValue);
         ftBytes:
           ;
         ftVarBytes:
@@ -1176,7 +1212,7 @@ begin
         ftBlob:
           ;
         ftMemo:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlStatement.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftGraphic:
           ;
         ftFmtMemo:
@@ -1190,9 +1226,9 @@ begin
         ftCursor:
           ;
         ftFixedChar:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlStatement.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftWideString:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlStatement.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftLargeint:
           ;
         ftADT:
@@ -1220,9 +1256,9 @@ begin
         ftFMTBcd:
           ;
         ftFixedWideChar:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlStatement.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftWideMemo:
-          sqlText.setParamAsDoubleQuotedString(_paramName, _paramValue);
+          sqlStatement.setParamAsDoubleQuotedString(_paramName, _paramValue);
         ftOraTimeStamp:
           ;
         ftOraInterval:
@@ -1251,7 +1287,7 @@ begin
     end;
   end;
 
-  Result := sqlText;
+  Result := sqlStatement;
 end;
 
 function checkMySQLCredentials(connectionString: string;
@@ -1548,7 +1584,7 @@ const
   SQL_SHOW_TRIGGERS = 'SHOW TRIGGERS FROM :database WHERE `Table` = :table';
 var
   _result: string;
-  _sqlStmt: sqlstring;
+  _sqlStatement: sqlstring;
   _query: TQuery;
   _dumpLines: TStringList;
   _insertStatement: string;
@@ -1595,11 +1631,11 @@ begin
         _dumpLines.Add('');
       end;
 
-      _sqlStmt := SQL_SHOW_CREATE_TABLE;
-      _sqlStmt.setParamAsString('database', _actualDatabaseName);
-      _sqlStmt.setParamAsString('table', tableName);
+      _sqlStatement := SQL_SHOW_CREATE_TABLE;
+      _sqlStatement.setParamAsString('database', _actualDatabaseName);
+      _sqlStatement.setParamAsString('table', tableName);
 
-      _query := getTQuery(connection, _sqlStmt);
+      _query := getTQuery(connection, _sqlStatement);
       try
         _query.Open;
         if not _query.IsEmpty then
@@ -1623,16 +1659,16 @@ begin
 
     if options.includeData then
     begin
-      _sqlStmt := SQL_SELECT_DATA;
-      _sqlStmt.setParamAsString('database', _actualDatabaseName);
-      _sqlStmt.setParamAsString('table', tableName);
+      _sqlStatement := SQL_SELECT_DATA;
+      _sqlStatement.setParamAsString('database', _actualDatabaseName);
+      _sqlStatement.setParamAsString('table', tableName);
 
       if options.whereClause <> EMPTY_STRING then
       begin
-        _sqlStmt := _sqlStmt + ' WHERE ' + options.whereClause;
+        _sqlStatement := _sqlStatement + ' WHERE ' + options.whereClause;
       end;
 
-      _query := getTQuery(connection, _sqlStmt);
+      _query := getTQuery(connection, _sqlStatement);
       try
         _query.Open;
         if not _query.IsEmpty then
@@ -1777,11 +1813,11 @@ begin
 
     if options.includeIndexes then
     begin
-      _sqlStmt := SQL_SHOW_INDEXES;
-      _sqlStmt.setParamAsString('database', _actualDatabaseName);
-      _sqlStmt.setParamAsString('table', tableName);
+      _sqlStatement := SQL_SHOW_INDEXES;
+      _sqlStatement.setParamAsString('database', _actualDatabaseName);
+      _sqlStatement.setParamAsString('table', tableName);
 
-      _query := getTQuery(connection, _sqlStmt);
+      _query := getTQuery(connection, _sqlStatement);
       try
         _query.Open;
         if not _query.IsEmpty then
@@ -1803,11 +1839,11 @@ begin
 
     if options.includeConstraints then
     begin
-      _sqlStmt := SQL_SHOW_CONSTRAINTS;
-      _sqlStmt.paramByNameAsString('schema', _actualDatabaseName);
-      _sqlStmt.paramByNameAsString('table', tableName);
+      _sqlStatement := SQL_SHOW_CONSTRAINTS;
+      _sqlStatement.paramByNameAsString('schema', _actualDatabaseName);
+      _sqlStatement.paramByNameAsString('table', tableName);
 
-      _query := getTQuery(connection, _sqlStmt);
+      _query := getTQuery(connection, _sqlStatement);
       try
         _query.Open;
         if not _query.IsEmpty then
@@ -1832,11 +1868,11 @@ begin
 
     if options.includeTriggers then
     begin
-      _sqlStmt := SQL_SHOW_TRIGGERS;
-      _sqlStmt.setParamAsString('database', _actualDatabaseName);
-      _sqlStmt.setParamAsString('table', tableName);
+      _sqlStatement := SQL_SHOW_TRIGGERS;
+      _sqlStatement.setParamAsString('database', _actualDatabaseName);
+      _sqlStatement.setParamAsString('table', tableName);
 
-      _query := getTQuery(connection, _sqlStmt);
+      _query := getTQuery(connection, _sqlStatement);
       try
         _query.Open;
         if not _query.IsEmpty then
@@ -1971,7 +2007,7 @@ procedure dumpDatabaseToFile(connection: TConnection; filename: string; options:
 const
   SQL_SHOW_TABLES = 'SHOW TABLES FROM :database';
 var
-  _sqlStmt: sqlstring;
+  _sqlStatement: sqlstring;
   _query: TQuery;
   _allDumpContent: string;
   _tableDumpContent: string;
@@ -1989,10 +2025,10 @@ begin
   _allDumpContent := '-- Full database dump for: ' + _actualDatabaseName + sLineBreak;
   _allDumpContent := _allDumpContent + '-- Generated on: ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + sLineBreak + sLineBreak;
 
-  _sqlStmt := SQL_SHOW_TABLES;
-  _sqlStmt.setParamAsString('database', _actualDatabaseName);
+  _sqlStatement := SQL_SHOW_TABLES;
+  _sqlStatement.setParamAsString('database', _actualDatabaseName);
 
-  _query := getTQuery(connection, _sqlStmt);
+  _query := getTQuery(connection, _sqlStatement);
   try
     _query.Open;
     if not _query.IsEmpty then
