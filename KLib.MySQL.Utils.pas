@@ -664,7 +664,7 @@ var
   _sqlStatement: sqlstring;
 begin
   _sqlStatement := SELECT_COUNT;
-  _sqlStatement.paramByNameAsString('tableName', tableName);
+  _sqlStatement.setParamAsString('tableName', tableName);
   recordCount:= getFirstFieldFromSQLStatement(_sqlStatement, connection);
 
   Result := recordCount;
