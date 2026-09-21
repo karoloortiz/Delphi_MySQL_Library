@@ -59,7 +59,7 @@ type
     function buildCreateTableSQL(selectQuery: string): string; overload;
     function buildCreateTableSQL(dataTypeInfo: PTypeInfo): string; overload;
     function buildDropTableSQL: string;
-    procedure executeCreateTable(createSQL: string);
+    function executeCreateTable(createSQL: string): integer;
 
   public
     isKeepEnabled: boolean;
@@ -69,9 +69,9 @@ type
     property isCreated: boolean read _isCreated;
 
     constructor create(connection: TConnection; tableType: TTableType = TTableType.temporary);
-    procedure execute(selectQuery: string; tableName: string = EMPTY_STRING); overload;
-    procedure execute<T>(data: TArray<T>; tableName: string = EMPTY_STRING); overload;
-    procedure execute<T>(data: TList<T>; tableName: string = EMPTY_STRING); overload;
+    function execute(selectQuery: string; tableName: string = EMPTY_STRING): integer; overload;
+    function execute<T>(data: TArray<T>; tableName: string = EMPTY_STRING): integer; overload;
+    function execute<T>(data: TList<T>; tableName: string = EMPTY_STRING): integer; overload;
     procedure drop;
     destructor Destroy; override;
   end;
@@ -171,45 +171,57 @@ begin
   Result := Format(_template, [getQuotedTableName(_tableName)]);
 end;
 
-procedure TDynamicTable.executeCreateTable(createSQL: string);
-begin
-  KLib.MySQL.Utils.executeQuery(createSQL, _connection);
-  _isCreated := true;
-end;
-
-procedure TDynamicTable.execute(selectQuery: string; tableName: string = EMPTY_STRING);
+function TDynamicTable.execute(selectQuery: string; tableName: string = EMPTY_STRING): integer;
 var
+  recordCountTable: integer;
+
   _createSQL: string;
 begin
   drop;
   setOrGenerateTableName(tableName);
   _createSQL := buildCreateTableSQL(selectQuery);
-  executeCreateTable(_createSQL);
+  recordCountTable := executeCreateTable(_createSQL);
+
+  Result := recordCountTable;
 end;
 
-procedure TDynamicTable.execute<T>(data: TArray<T>; tableName: string = EMPTY_STRING);
+function TDynamicTable.execute<T>(data: TArray<T>; tableName: string = EMPTY_STRING): integer;
 var
+  recordCountTable: integer;
+
   _createSQL: string;
 begin
   drop;
   setOrGenerateTableName(tableName);
   _createSQL := buildCreateTableSQL(TypeInfo(T));
-  executeCreateTable(_createSQL);
-  TBatchInsert.into<T>(_connection, _tableName, data);
+  recordCountTable := executeCreateTable(_createSQL);
+  recordCountTable := TBatchInsert.into<T>(_connection, _tableName, data);
+
+  Result := recordCountTable;
 end;
 
-procedure TDynamicTable.execute<T>(data: TList<T>; tableName: string = EMPTY_STRING);
+function TDynamicTable.execute<T>(data: TList<T>; tableName: string = EMPTY_STRING): integer;
 var
+  recordCountTable: integer;
   _createSQL: string;
 begin
   drop;
   setOrGenerateTableName(tableName);
   _createSQL := buildCreateTableSQL(TypeInfo(T));
-  executeCreateTable(_createSQL);
+  recordCountTable := executeCreateTable(_createSQL);
   if data <> nil then
   begin
-    TBatchInsert.into<T>(_connection, _tableName, data.ToArray);
+    recordCountTable := TBatchInsert.into<T>(_connection, _tableName, data.ToArray);
   end;
+
+  Result := recordCountTable;
+end;
+
+function TDynamicTable.executeCreateTable(createSQL: string): integer;
+begin
+  KLib.MySQL.Utils.executeQuery(createSQL, _connection);
+  _isCreated := true;
+  Result := getRecordCountFromTableName(_tableName, _connection);
 end;
 
 procedure TDynamicTable.drop;

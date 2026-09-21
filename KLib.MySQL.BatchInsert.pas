@@ -56,15 +56,15 @@ type
 
   //generic holder (Delphi has no free generic routines): TBatchInsert.into<T>(...)
   TBatchInsert = record
-    class procedure into<T>(connection: TConnection; tableName: string;
-      data: TArray<T>; batchSize: integer = DEFAULT_BATCH_SIZE); overload; static;
-    class procedure into<T>(connection: TConnection; tableName: string;
-      data: TList<T>; batchSize: integer = DEFAULT_BATCH_SIZE); overload; static;
+    class function into<T>(connection: TConnection; tableName: string;
+      data: TList<T>; batchSize: integer = DEFAULT_BATCH_SIZE): integer; overload; static;
+    class function into<T>(connection: TConnection; tableName: string;
+      data: TArray<T>; batchSize: integer = DEFAULT_BATCH_SIZE): Integer; overload; static;
   end;
 
-//core: insert an array of already-boxed records into an existing table
-procedure batchInsertValues(connection: TConnection; tableName: string;
-  data: TArray<TValue>; typeInfo: PTypeInfo; batchSize: integer = DEFAULT_BATCH_SIZE);
+  //core: insert an array of already-boxed records into an existing table
+function batchInsertValues(connection: TConnection; tableName: string;
+  data: TArray<TValue>; typeInfo: PTypeInfo; batchSize: integer = DEFAULT_BATCH_SIZE): integer;
 
 //shared type -> columns mapping, so CREATE TABLE and INSERT never diverge
 function getInsertableMembers(rttiType: TRttiType): TArray<TMemberInfo>;
@@ -83,9 +83,17 @@ uses
   KLib.MySQL.Utils;
 
 { TBatchInsert }
+class function TBatchInsert.into<T>(connection: TConnection; tableName: string;
+  data: TList<T>; batchSize: integer = DEFAULT_BATCH_SIZE): integer;
+begin
+  if data <> nil then
+  begin
+    Result := TBatchInsert.into<T>(connection, tableName, data.ToArray, batchSize);
+  end;
+end;
 
-class procedure TBatchInsert.into<T>(connection: TConnection; tableName: string;
-  data: TArray<T>; batchSize: integer = DEFAULT_BATCH_SIZE);
+class function TBatchInsert.into<T>(connection: TConnection; tableName: string;
+  data: TArray<T>; batchSize: integer = DEFAULT_BATCH_SIZE): integer;
 var
   _values: TArray<TValue>;
   _value: TValue;
@@ -98,16 +106,7 @@ begin
     _values[i] := _value;
   end;
 
-  batchInsertValues(connection, tableName, _values, TypeInfo(T), batchSize);
-end;
-
-class procedure TBatchInsert.into<T>(connection: TConnection; tableName: string;
-  data: TList<T>; batchSize: integer = DEFAULT_BATCH_SIZE);
-begin
-  if data <> nil then
-  begin
-    TBatchInsert.into<T>(connection, tableName, data.ToArray, batchSize);
-  end;
+  Result := batchInsertValues(connection, tableName, _values, TypeInfo(T), batchSize);
 end;
 
 function getQuotedIdentifier(identifier: string): string;
@@ -167,7 +166,7 @@ function getMemberInfoFromField(field: TRttiField): TMemberInfo;
 var
   _result: TMemberInfo;
 begin
-  _result := Default(TMemberInfo);
+  _result := Default (TMemberInfo);
   _result.field := field;
   _result.memberType := field.FieldType;
   _result.columnName := getColumnName(field);
@@ -179,7 +178,7 @@ function getMemberInfoFromProperty(prop: TRttiProperty): TMemberInfo;
 var
   _result: TMemberInfo;
 begin
-  _result := Default(TMemberInfo);
+  _result := Default (TMemberInfo);
   _result.prop := prop;
   _result.memberType := prop.PropertyType;
   _result.columnName := getColumnName(prop);
@@ -197,7 +196,7 @@ var
   _isClass: boolean;
   _result: TArray<TMemberInfo>;
 begin
-  if not (rttiType.TypeKind in [tkRecord, tkClass]) then
+  if not(rttiType.TypeKind in [tkRecord, tkClass]) then
   begin
     raise Exception.Create('Type must be a record or class: ' + rttiType.Name);
   end;
@@ -346,8 +345,8 @@ begin
   Result := _result;
 end;
 
-procedure batchInsertValues(connection: TConnection; tableName: string;
-  data: TArray<TValue>; typeInfo: PTypeInfo; batchSize: integer = DEFAULT_BATCH_SIZE);
+function batchInsertValues(connection: TConnection; tableName: string;
+  data: TArray<TValue>; typeInfo: PTypeInfo; batchSize: integer = DEFAULT_BATCH_SIZE): integer;
 var
   _ctx: TRttiContext;
   _rttiType: TRttiType;
@@ -369,6 +368,8 @@ var
   end;
 
 begin
+  Result := -1;
+
   if batchSize < 1 then
   begin
     raise Exception.Create('Batch size must be greater than zero');
@@ -408,6 +409,8 @@ begin
     end;
 
     flushBatch;
+
+    Result := i;
   finally
     FreeAndNil(_values);
   end;
