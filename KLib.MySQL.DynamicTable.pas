@@ -62,8 +62,6 @@ type
     function executeCreateTable(createSQL: string): integer;
 
   public
-    isKeepEnabled: boolean;
-
     property tableName: string read _tableName;
     property tableType: TTableType read _tableType;
     property isCreated: boolean read _isCreated;
@@ -89,7 +87,6 @@ begin
   _tableType := tableType;
   _isCreated := false;
   _tableName := EMPTY_STRING;
-  isKeepEnabled := false;
 end;
 
 procedure TDynamicTable.setOrGenerateTableName(tableName: string);
@@ -238,7 +235,7 @@ end;
 
 destructor TDynamicTable.destroy;
 begin
-  if (_tableType = TTableType.temporary) or (not isKeepEnabled) then
+  if (_tableType = TTableType.temporary) then
   begin
     drop;
   end;
