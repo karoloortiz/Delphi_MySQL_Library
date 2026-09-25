@@ -292,13 +292,30 @@ const
 var
   sqlStatement: sqlstring;
   _databaseName: string;
+  _tableName: string;
 begin
-  sqlStatement := SELECT_;
-  _databaseName := ifThen(isSearchingAllDatabases, 'table_schema', databaseName);
-  _databaseName := ifThen(_databaseName = '', connection.database, _databaseName);
+  _databaseName := connection.database;
+  _tableName := tableName;
+  if (Pos('.', tableName) > 0) then
+  begin
+    splitStrings(tableName, '.', _databaseName, _tableName);
+  end;
+  if (databaseName <> '') then
+  begin
+    _databaseName := databaseName;
+  end;
 
-  sqlStatement.paramByNameAsString('table_schema', _databaseName);
-  sqlStatement.paramByNameAsString('table_name', tableName);
+  sqlStatement := SELECT_;
+  if (isSearchingAllDatabases) then
+  begin
+    // column compared to itself: the schema filter becomes always true
+    sqlStatement.setParamAsString('table_schema', 'table_schema');
+  end
+  else
+  begin
+    sqlStatement.paramByNameAsString('table_schema', _databaseName);
+  end;
+  sqlStatement.paramByNameAsString('table_name', _tableName);
 
   Result := getFirstFieldFromSQLStatement(sqlStatement, connection);
 end;
@@ -592,7 +609,7 @@ begin
   sqlStatement.paramByNameAsString('separator', separator);
   sqlStatement.paramByNameAsString('table_schema', _databaseName);
   sqlStatement.paramByNameAsString('table_name', tableName);
-  _excludeColumns := joinStrings(excludeColumns, ', ', '''', );
+  _excludeColumns := joinStrings(excludeColumns, ', ', '''');
   sqlStatement.setParamAsString('excludeColumns', _excludeColumns);
 
   Result := getFirstFieldFromSQLStatement(sqlStatement, connection);
