@@ -57,6 +57,13 @@ function getNow(connectionString: string): TDateTime; overload;
 function getNow(credentials: KLib.MySQL.Credentials.TCredentials): TDateTime; overload;
 function getNow(connection: TConnection): TDateTime; overload;
 
+function checkIfTableExists(connectionString: string;
+  tableName: string; isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean; overload;
+function checkIfTableExists(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean; overload;
+function checkIfTableExists(connection: TConnection;
+  tableName: string; isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean; overload;
+
 function checkIfMysqlVersionIs_v_8(connectionString: string): boolean; overload;
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean; overload;
 function checkIfMysqlVersionIs_v_8(connection: TConnection): boolean; overload;
@@ -72,6 +79,26 @@ function getNonStandardsDatabasesAsStringList(connection: TConnection): TStringL
 function getMySQLDataDir(connectionString: string): string; overload;
 function getMySQLDataDir(credentials: KLib.MySQL.Credentials.TCredentials): string; overload;
 function getMySQLDataDir(connection: TConnection): string; overload;
+
+function getTableColumns(connectionString: string;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+function getTableColumns(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+function getTableColumns(connection: TConnection;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+function getTableColumns(connectionString: string;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+function getTableColumns(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+function getTableColumns(connection: TConnection;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string; overload;
+
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connectionString: string): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; credentials: KLib.MySQL.Credentials.TCredentials): TStringList; overload;
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string; connection: TConnection): TStringList; overload;
@@ -219,6 +246,63 @@ begin
   Result := now;
 end;
 
+function checkIfTableExists(connectionString: string;
+  tableName: string; isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+
+  Result := checkIfTableExists(_credentials, tableName, isSearchingAllDatabases, databaseName);
+end;
+
+function checkIfTableExists(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean;
+var
+  _result: boolean;
+
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    _result := checkIfTableExists(_connection, tableName, isSearchingAllDatabases, databaseName);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := _result;
+end;
+
+function checkIfTableExists(connection: TConnection; tableName: string;
+  isSearchingAllDatabases: boolean = false; databaseName: string = ''): boolean;
+const
+  SELECT_ =
+    'SELECT' + sLineBreak +
+    ' EXISTS(' + sLineBreak +
+    '   SELECT' + sLineBreak +
+    '     table_name' + sLineBreak +
+    '   FROM' + sLineBreak +
+    '     information_schema.tables' + sLineBreak +
+    '   WHERE' + sLineBreak +
+    '     table_schema = :table_schema' + sLineBreak +
+    '     AND table_name = :table_name' + sLineBreak +
+    ' ) is_table_exists';
+var
+  sqlStatement: sqlstring;
+  _databaseName: string;
+begin
+  sqlStatement := SELECT_;
+  _databaseName := ifThen(isSearchingAllDatabases, 'table_schema', databaseName);
+  _databaseName := ifThen(_databaseName = '', connection.database, _databaseName);
+
+  sqlStatement.paramByNameAsString('table_schema', _databaseName);
+  sqlStatement.paramByNameAsString('table_name', tableName);
+
+  Result := getFirstFieldFromSQLStatement(sqlStatement, connection);
+end;
+
 function checkIfMysqlVersionIs_v_8(credentials: KLib.MySQL.Credentials.TCredentials): boolean;
 var
   _result: boolean;
@@ -363,6 +447,14 @@ begin
   Result := databases;
 end;
 
+function getMySQLDataDir(connectionString: string): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+  Result := getMySQLDataDir(_credentials);
+end;
+
 function getMySQLDataDir(credentials: KLib.MySQL.Credentials.TCredentials): string;
 var
   dataDir: string;
@@ -391,6 +483,119 @@ begin
   dataDir := getFirstFieldFromSQLStatement(SQL_STATEMENT, connection);
 
   Result := dataDir;
+end;
+
+function getTableColumns(connectionString: string;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+
+  Result := getTableColumns(_credentials, tableName, excludeColumns, separator);
+end;
+
+function getTableColumns(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+var
+  _result: string;
+
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    _result := getTableColumns(_connection, tableName, excludeColumns,
+      separator);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := _result;
+end;
+
+function getTableColumns(connection: TConnection;
+  tableName: string; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+var
+  _tableName: string;
+  _dataBaseName: string;
+begin
+  splitStrings(tableName, '.', _dataBaseName, _tableName);
+  if (_tableName = '') then
+  begin
+    _tableName := tableName;
+    _dataBaseName := '';
+  end;
+
+  Result := getTableColumns(connection, _tableName, _dataBaseName, excludeColumns,
+    separator);
+end;
+
+function getTableColumns(connectionString: string;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+var
+  _credentials: TCredentials;
+begin
+  _credentials := parseConnectionStringToCredentials(connectionString);
+
+  Result := getTableColumns(_credentials, tableName, databaseName, excludeColumns,
+    separator);
+end;
+
+function getTableColumns(credentials: KLib.MySQL.Credentials.TCredentials;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+var
+  _result: string;
+
+  _connection: TConnection;
+begin
+  _connection := getValidTConnection(credentials);
+  try
+    _connection.Connected := true;
+    _result := getTableColumns(_connection, tableName, databaseName, excludeColumns,
+      separator);
+    _connection.Connected := false;
+  finally
+    FreeAndNil(_connection);
+  end;
+
+  Result := _result;
+end;
+
+function getTableColumns(connection: TConnection;
+  tableName: string; databaseName: string = ''; excludeColumns: TArray<String> = [];
+  separator: string = ', '): string;
+const
+  SELECT_ =
+    'SELECT' + sLineBreak +
+    ' GROUP_CONCAT(column_name ORDER BY ordinal_position SEPARATOR :separator)' + sLineBreak +
+    'FROM' + sLineBreak +
+    ' information_schema.columns' + sLineBreak +
+    'WHERE' + sLineBreak +
+    ' table_schema = :table_schema' + sLineBreak +
+    ' AND table_name = :table_name' + sLineBreak +
+    ' AND column_name NOT IN (:excludeColumns)';
+var
+  sqlStatement: sqlstring;
+  _databaseName: string;
+  _excludeColumns: string;
+begin
+  sqlStatement := SELECT_;
+  _databaseName := ifThen(databaseName = '', connection.database, databaseName);
+
+  sqlStatement.paramByNameAsString('separator', separator);
+  sqlStatement.paramByNameAsString('table_schema', _databaseName);
+  sqlStatement.paramByNameAsString('table_name', tableName);
+  _excludeColumns := joinStrings(excludeColumns, ', ', '''', );
+  sqlStatement.setParamAsString('excludeColumns', _excludeColumns);
+
+  Result := getFirstFieldFromSQLStatement(sqlStatement, connection);
 end;
 
 function getFirstFieldStringListFromSQLStatement(sqlStatement: string;
@@ -665,7 +870,7 @@ var
 begin
   _sqlStatement := SELECT_COUNT;
   _sqlStatement.setParamAsString('tableName', tableName);
-  recordCount:= getFirstFieldFromSQLStatement(_sqlStatement, connection);
+  recordCount := getFirstFieldFromSQLStatement(_sqlStatement, connection);
 
   Result := recordCount;
 end;
@@ -1447,14 +1652,6 @@ var
 begin
   _credentials := parseConnectionStringToCredentials(connectionString);
   Result := getFirstFieldStringListFromSQLStatement(sqlStatement, _credentials);
-end;
-
-function getMySQLDataDir(connectionString: string): string;
-var
-  _credentials: TCredentials;
-begin
-  _credentials := parseConnectionStringToCredentials(connectionString);
-  Result := getMySQLDataDir(_credentials);
 end;
 
 function getNonStandardsDatabasesAsStringList(connectionString: string): TStringList;
